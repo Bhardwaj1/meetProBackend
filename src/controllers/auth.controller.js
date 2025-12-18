@@ -24,7 +24,7 @@ const register = async (req, res) => {
   await user.save();
   await sendEmail(email, name, otp);
 
-  res.json({ message: "Otp sent to email please verify it" });
+  res.status(201).json({ message: "Otp sent to email please verify it" });
 };
 
 const login = async (req, res) => {
