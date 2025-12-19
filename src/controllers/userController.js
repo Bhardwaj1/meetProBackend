@@ -1,7 +1,8 @@
-
-
-function createUser(req,res){
-    
+function getMe(req, res) {
+    res.status(200).json({
+        success:true,
+        user:req.user
+    })
 }
 
-module.exports={createUser};
+module.exports = { getMe };

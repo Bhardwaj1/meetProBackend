@@ -19,6 +19,7 @@ const register = async (req, res) => {
     email,
     password: hashedPassword,
     otp,
+    otpExipreAt: Date.now() + 60 * 1000,
   });
 
   await user.save();
@@ -42,7 +43,16 @@ const login = async (req, res) => {
   }
 
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-  res.json(token);
+  res.status(200).json({
+    success: true,
+    message: "Login Succesfully",
+    token,
+    user: {
+      id: user?._id,
+      name: user.email,
+      email: user.email,
+    },
+  });
 };
 
 const verifyOtp = async (req, res) => {
@@ -53,11 +63,36 @@ const verifyOtp = async (req, res) => {
     return res.status(400).json({ error: "Invalid Otp" });
   }
 
+  if (user.otpExipreAt < Date.now()) {
+    return res.status(400).json({ error: "OTP expired" });
+  }
+
   user.isVerified = true;
   user.otp = null;
+  user.otpExipreAt = null;
   await user.save();
 
   res.json({ message: "User verified successfully" });
 };
 
-module.exports = { register, login, verifyOtp };
+const resendOtp = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(400).json({ error: "User not found" });
+  }
+
+  if (user.isVerified) {
+    return res.status(400).json({ error: "User is already verified" });
+  }
+  const otp = Math.floor(100000 + Math.random() * 900000);
+  user.otp = otp;
+  user.otpExipreAt = Date.now() + 60 * 1000;
+
+  await user.save();
+  await sendEmail(email, user.name, otp);
+  res.status(201).json({ message: "Otp Sent Successfully" });
+};
+
+module.exports = { register, login, verifyOtp, resendOtp };

@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
     otp: String,
+    otpExipreAt: Date,
     googleId: String,
   },
   { timestamps: true }
