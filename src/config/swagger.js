@@ -8,7 +8,7 @@ const swaggerDefinition = {
     version: "1.0.0",
     description: "API Documentation for MeetPro application",
   },
-  server: [
+  servers: [
     {
       url: "http://localhost:8000",
       description: "Local Development Server",
@@ -27,7 +27,7 @@ const swaggerDefinition = {
 
 const options = {
   swaggerDefinition,
-  apis: ["./routes/*.js"],
+  apis: ["./src/routes/*.js"],
 };
 
 const swaggerSpec = swaggerJSDoc(options);

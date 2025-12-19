@@ -6,7 +6,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /user:
+ * /api/user:
  *   get:
  *     summary: Get current logged-in user
  *     description: Returns the profile of the authenticated user.
