@@ -102,9 +102,13 @@ const leaveMeeting = asyncHandler(async (req, res) => {
 
   // check user is participants or not
 
-  const isParticipants = meeting.participants
-    .map((id) => id.toString())
-    .includes(userId);
+  // const isParticipants = meeting.participants
+  //   .map((id) => id.toString())
+  //   .includes(userId);
+
+  const isParticipants = meeting.participants.find(
+    (id) => id.toString() === userId
+  );
 
   if (!isParticipants) {
     res.status(404);
@@ -164,4 +168,10 @@ const endMeeting = async (req, res) => {
   }
 };
 
-module.exports = { createMeeting, joinMeeting, endMeeting, getMeetingDetails,leaveMeeting };
+module.exports = {
+  createMeeting,
+  joinMeeting,
+  endMeeting,
+  getMeetingDetails,
+  leaveMeeting,
+};

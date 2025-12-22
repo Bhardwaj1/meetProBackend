@@ -46,7 +46,7 @@ router.post("/create-meeting", protect, createMeeting);
 router.post("/join-meeting", protect, joinMeeting);
 
 router.get("/:meetingId", protect, getMeetingDetails);
-router.post("/leave", protect, leaveMeeting);
+router.post("/leave-meeting", protect, leaveMeeting);
 router.post("/end-meeting", protect, endMeeting);
 
 module.exports = router;
