@@ -13,6 +13,9 @@ const meetingSchema = new mongoose.Schema({
     type: Date,
     default: Date.now(),
   },
+  endAt: {
+    type: Date,
+  },
   isActive: { type: Boolean, default: true },
 });
 

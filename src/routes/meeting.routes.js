@@ -3,6 +3,7 @@ const protect = require("../middleware/authMiddleware");
 const {
   createMeeting,
   joinMeeting,
+  endMeeting,
 } = require("../controllers/meeting.controller");
 
 const router = express.Router();
@@ -41,5 +42,7 @@ router.post("/create-meeting", protect, createMeeting);
  *         description: Successfully joined meeting
  */
 router.get("/join-meeting", protect, joinMeeting);
+
+router.post("/end-meeting", protect, endMeeting);
 
 module.exports = router;
