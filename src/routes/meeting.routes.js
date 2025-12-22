@@ -4,6 +4,7 @@ const {
   createMeeting,
   joinMeeting,
   endMeeting,
+  getMeetingDetails,
 } = require("../controllers/meeting.controller");
 
 const router = express.Router();
@@ -41,8 +42,9 @@ router.post("/create-meeting", protect, createMeeting);
  *       200:
  *         description: Successfully joined meeting
  */
-router.get("/join-meeting", protect, joinMeeting);
+router.post("/join-meeting", protect, joinMeeting);
 
+router.get("/:meetingId", protect, getMeetingDetails);
 router.post("/end-meeting", protect, endMeeting);
 
 module.exports = router;
