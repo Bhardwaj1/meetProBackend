@@ -8,7 +8,7 @@ socket.on("connect", () => {
   socket.emit("hello", { name: "Gaurav" });
 });
 
-socket.on("hello response", (data) => {
+socket.on("hello-response", (data) => {
   console.log(`Server Says ${data.message}`);
 });
 

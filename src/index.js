@@ -45,6 +45,6 @@ app.use("/api/user", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/meeting", meetingRoutes);
 
-app.listen(PORT || 8080, () => {
+server.listen(PORT || 8080, () => {
   console.log(`🚀 App + Socket running on port ${PORT}`);
 });
