@@ -84,6 +84,54 @@ const getMeetingDetails = asyncHandler(async (req, res) => {
   });
 });
 
+const leaveMeeting = asyncHandler(async (req, res) => {
+  const { meetingId } = req.body;
+
+  if (!meetingId) {
+    res.status(400);
+    throw new Error("Meeting Id is required");
+  }
+
+  const meeting = await Meeting.findOne({ meetingId });
+  if (!meeting || !meeting.isActive) {
+    res.status(404);
+    throw new Error("Meeting not found or ended");
+  }
+
+  const userId = req.user._id.toString();
+
+  // check user is participants or not
+
+  const isParticipants = meeting.participants
+    .map((id) => id.toString())
+    .includes(userId);
+
+  if (!isParticipants) {
+    res.status(404);
+    throw new Error("You are not the part of meeting");
+  }
+
+  if (meeting.host.toString() === userId) {
+    meeting.isActive = false;
+    (meeting.endAt = new Date.now()), await meeting.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Meeting ended",
+    });
+  }
+  meeting.participants = meeting.participants.filter(
+    (id) => id.toString() !== userId
+  );
+
+  await meeting.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Meeting left successfully",
+  });
+});
+
 const endMeeting = async (req, res) => {
   const { meetingId } = req.body;
   try {
@@ -116,4 +164,4 @@ const endMeeting = async (req, res) => {
   }
 };
 
-module.exports = { createMeeting, joinMeeting, endMeeting, getMeetingDetails };
+module.exports = { createMeeting, joinMeeting, endMeeting, getMeetingDetails,leaveMeeting };
