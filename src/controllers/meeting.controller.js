@@ -117,7 +117,7 @@ const leaveMeeting = asyncHandler(async (req, res) => {
 
   if (meeting.host.toString() === userId) {
     meeting.isActive = false;
-    (meeting.endAt = new Date.now()), await meeting.save();
+    (meeting.endAt = Date.now()), await meeting.save();
 
     return res.status(200).json({
       success: true,
