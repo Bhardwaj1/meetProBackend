@@ -11,6 +11,7 @@ const http = require("http");
 const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/auth.routes");
 const meetingRoutes = require("./routes/meeting.routes");
+const initSocket = require("./socket");
 
 const app = express();
 const PORT = process.env.PORT;
@@ -21,43 +22,7 @@ app.use(cors());
 
 const server = http.createServer(app);
 
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-  },
-});
-
-io.on("connection", (socket) => {
-  console.log("Socket connected");
-  socket.on("hello", (data) => {
-    console.log("Message from client");
-    socket.emit("hello-response", {
-      message: "hello from server",
-    });
-  });
-
-  // Join meeting room
-  socket.on("join-meeting", (meetingId, userId) => {
-    socket.join(meetingId);
-    console.log(`User ${userId} joined meeting ${meetingId}`);
-    socket.to(meetingId).emit("user-joined", {
-      userId,
-    });
-  });
-
-  // Leave meeting room
-  socket.on("leave-meeting", (meetingId, userId) => {
-    socket.leave(meetingId);
-    console.log(`user ${userId} left the meeting ${meetingId}`);
-
-    socket.to(meetingId).emit("user-left", {
-      userId,
-    });
-  });
-  socket.on("disconnect", () => {
-    console.log("User disconnected", socket.id);
-  });
-});
+initSocket(server);
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/user", userRoutes);
