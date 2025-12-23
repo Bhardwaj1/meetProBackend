@@ -35,6 +35,25 @@ io.on("connection", (socket) => {
       message: "hello from server",
     });
   });
+
+  // Join meeting room
+  socket.on("join-meeting", (meetingId, userId) => {
+    socket.join(meetingId);
+    console.log(`User ${userId} joined meeting ${meetingId}`);
+    socket.to(meetingId).emit("user-joined", {
+      userId,
+    });
+  });
+
+  // Leave meeting room
+  socket.on("leave-meeting", (meetingId, userId) => {
+    socket.leave(meetingId);
+    console.log(`user ${userId} left the meeting ${meetingId}`);
+
+    socket.to(meetingId).emit("user-left", {
+      userId,
+    });
+  });
   socket.on("disconnect", () => {
     console.log("User disconnected", socket.id);
   });
