@@ -12,10 +12,7 @@ const initSocket = (server) => {
   io.use(socketAuth);
 
   io.on("connection", (socket) => {
-    console.log("Socket connected", socket);
-
     registerMeetingHandler(io, socket);
-
     socket.on("disconnect", () => {
       console.log("Socket disconnected", socket.user.name);
     });
