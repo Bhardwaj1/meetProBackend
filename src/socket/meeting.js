@@ -13,6 +13,24 @@ const registerMeetingHandler = (io, socket) => {
     });
   });
 
+  socket.on("mute-self", () => {
+    if (socket.meetingId) {
+      return;
+    }
+    socket.to(socket.meetingId).emit("user-muted", {
+      userId: socket.user._id,
+    });
+  });
+
+  socket.on("unmute-self", () => {
+    if (socket.meetingId) {
+      return;
+    }
+    socket.to(socket.meetingId).emit("user-muted", {
+      userId: socket.user._id,
+    });
+  });
+
   // Leave meeting
   socket.on("leave-meeting", async ({ meetingId }) => {
     if (!socket.meetingId) {
@@ -28,7 +46,6 @@ const registerMeetingHandler = (io, socket) => {
   });
 
   // Disconnect meeting
-
   socket.on("disconnect", async () => {
     if (!socket.meetingId) {
       return;
