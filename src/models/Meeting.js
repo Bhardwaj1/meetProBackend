@@ -5,8 +5,14 @@ const meetingSchema = new mongoose.Schema({
   host: { type: mongoose.Schema.ObjectId, ref: "User", required: true },
   participants: [
     {
-      type: mongoose.Schema.ObjectId,
-      ref: "User",
+      user: {
+        type: mongoose.Schema.ObjectId,
+        ref: "User",
+      },
+      isMuted: {
+        type: Boolean,
+        default: false,
+      },
     },
   ],
   createdAt: {

@@ -1,79 +1,96 @@
 const Meeting = require("../models/Meeting");
-const emitparticipantsCount = require("./helpers");
 
-const registerMeetingHandler = (io, socket) => {
-  // Join meeting
+const registerMeetingHandlers = (io, socket) => {
+  /* ===============================
+     JOIN MEETING
+  ================================ */
   socket.on("join-meeting", async ({ meetingId }) => {
+    const meeting = await Meeting.findOne({ meetingId })
+      .populate("participants.user", "name email");
+
+    if (!meeting || !meeting.isActive) return;
+
     socket.join(meetingId);
     socket.meetingId = meetingId;
 
-    await emitparticipantsCount(io, meetingId);
-    io.to(meetingId).emit("user-joined", {
-      user: socket.user,
+    // 🔄 SEND FULL STATE TO JOINING USER
+    socket.emit("meeting-state", {
+      participants: meeting.participants.map((p) => ({
+        id: p.user._id,
+        name: p.user.name,
+        isMuted: p.isMuted,
+      })),
+    });
+
+    // 🔔 NOTIFY OTHERS
+    socket.to(meetingId).emit("user-joined", {
+      user: {
+        id: socket.user._id,
+        name: socket.user.name,
+      },
     });
   });
 
-  socket.on("mute-self", () => {
-    if (socket.meetingId) {
-      return;
-    }
+  /* ===============================
+     MUTE SELF
+  ================================ */
+  socket.on("mute-self", async () => {
+    if (!socket.meetingId) return;
+
+    const meeting = await Meeting.findOne({ meetingId: socket.meetingId });
+    if (!meeting) return;
+
+    const participant = meeting.participants.find(
+      (p) => p.user.toString() === socket.user._id.toString()
+    );
+
+    if (!participant) return;
+
+    participant.isMuted = true;
+    await meeting.save();
+
     socket.to(socket.meetingId).emit("user-muted", {
       userId: socket.user._id,
     });
   });
 
-  socket.on("unmute-self", () => {
-    if (socket.meetingId) {
-      return;
-    }
-    socket.to(socket.meetingId).emit("user-muted", {
+  /* ===============================
+     UNMUTE SELF
+  ================================ */
+  socket.on("unmute-self", async () => {
+    if (!socket.meetingId) return;
+
+    const meeting = await Meeting.findOne({ meetingId: socket.meetingId });
+    if (!meeting) return;
+
+    const participant = meeting.participants.find(
+      (p) => p.user.toString() === socket.user._id.toString()
+    );
+
+    if (!participant) return;
+
+    participant.isMuted = false;
+    await meeting.save();
+
+    socket.to(socket.meetingId).emit("user-unmuted", {
       userId: socket.user._id,
     });
   });
 
-  // Leave meeting
-  socket.on("leave-meeting", async ({ meetingId }) => {
-    if (!socket.meetingId) {
-      return;
-    }
+  /* ===============================
+     LEAVE MEETING
+  ================================ */
+  socket.on("leave-meeting", async () => {
+    if (!socket.meetingId) return;
 
     socket.leave(socket.meetingId);
 
-    io.to(socket.meetingId).emit("user-left", {
+    socket.to(socket.meetingId).emit("user-left", {
       userId: socket.user._id,
     });
+
     socket.meetingId = null;
-  });
-
-  // Disconnect meeting
-  socket.on("disconnect", async () => {
-    if (!socket.meetingId) {
-      return;
-    }
-    const meeting = await Meeting.findOne({
-      meetingId: socket.meetingId,
-      isActive: true,
-    });
-
-    if (!meeting) {
-      return;
-    }
-
-    if (meeting.host.toString() === socket.user._id.toString()) {
-      meeting.isActive = false;
-      meeting.endAt = new Date();
-      await meeting.save();
-      io.to(socket.meetingId).emit("meeting-ended", {
-        message: "Host disconnected. Meeting ended",
-      });
-    } else {
-      await emitparticipantsCount(io, socket.meetingId);
-
-      io.to(socket.meetingId).emit("user-left", {
-        userId: socket.user._id,
-      });
-    }
   });
 };
 
-module.exports = registerMeetingHandler;
+module.exports = registerMeetingHandlers;
