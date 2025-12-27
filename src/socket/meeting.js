@@ -1,19 +1,21 @@
 const Meeting = require("../models/Meeting");
 
 const registerMeetingHandlers = (io, socket) => {
+
   /* ===============================
      JOIN MEETING
   ================================ */
   socket.on("join-meeting", async ({ meetingId }) => {
-    const meeting = await Meeting.findOne({ meetingId })
-      .populate("participants.user", "name email");
+    const meeting = await Meeting.findOne({ meetingId }).populate(
+      "participants.user",
+      "name email"
+    );
 
     if (!meeting || !meeting.isActive) return;
 
     socket.join(meetingId);
     socket.meetingId = meetingId;
 
-    // 🔄 SEND FULL STATE TO JOINING USER
     socket.emit("meeting-state", {
       participants: meeting.participants.map((p) => ({
         id: p.user._id,
@@ -22,7 +24,6 @@ const registerMeetingHandlers = (io, socket) => {
       })),
     });
 
-    // 🔔 NOTIFY OTHERS
     socket.to(meetingId).emit("user-joined", {
       user: {
         id: socket.user._id,
@@ -49,7 +50,7 @@ const registerMeetingHandlers = (io, socket) => {
     participant.isMuted = true;
     await meeting.save();
 
-    socket.to(socket.meetingId).emit("user-muted", {
+    io.to(socket.meetingId).emit("user-muted", {
       userId: socket.user._id,
     });
   });
@@ -72,15 +73,65 @@ const registerMeetingHandlers = (io, socket) => {
     participant.isMuted = false;
     await meeting.save();
 
-    socket.to(socket.meetingId).emit("user-unmuted", {
+    io.to(socket.meetingId).emit("user-unmuted", {
       userId: socket.user._id,
+    });
+  });
+
+  /* ===============================
+     HOST → MUTE USER
+  ================================ */
+  socket.on("host-mute-user", async ({ targetUserId }) => {
+    if (!socket.meetingId) return;
+
+    const meeting = await Meeting.findOne({ meetingId: socket.meetingId });
+    if (!meeting) return;
+
+    if (meeting.host.toString() !== socket.user._id.toString()) return;
+
+    const participant = meeting.participants.find(
+      (p) => p.user.toString() === targetUserId
+    );
+
+    if (!participant) return;
+
+    participant.isMuted = true;
+    await meeting.save();
+
+    io.to(socket.meetingId).emit("user-muted", {
+      userId: targetUserId,
+    });
+  });
+
+  /* ===============================
+     HOST → UNMUTE USER
+  ================================ */
+  socket.on("host-unmute-user", async ({ targetUserId }) => {
+    if (!socket.meetingId) return;
+
+    const meeting = await Meeting.findOne({ meetingId: socket.meetingId });
+    if (!meeting) return;
+
+    if (meeting.host.toString() !== socket.user._id.toString()) return;
+
+    const participant = meeting.participants.find(
+      (p) => p.user.toString() === targetUserId
+    );
+
+    if (!participant) return;
+
+    participant.isMuted = false;
+    await meeting.save();
+
+    io.to(socket.meetingId).emit("user-unmuted", {
+      userId: targetUserId,
     });
   });
 
   /* ===============================
      LEAVE MEETING
   ================================ */
-  socket.on("leave-meeting", async () => {
+  socket.on("leave-meeting", () => {
     if (!socket.meetingId) return;
 
     socket.leave(socket.meetingId);
