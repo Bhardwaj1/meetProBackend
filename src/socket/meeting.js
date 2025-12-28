@@ -162,6 +162,36 @@ const registerMeetingHandlers = (io, socket) => {
     });
   });
 
+  // End Meeting
+
+  socket.on("host-end-meeting", async () => {
+    if (!socket.meetingId) {
+      return;
+    }
+
+    const meeting = await Meeting.findOne({ meetingId: socket.meetingId });
+
+    if (!meeting) return;
+
+    if (meeting.host.toString() !== socket.user._id.toString()) {
+      return;
+    };
+
+    meeting.isActive=false;
+    meeting.endAt=new Date;
+
+    await meeting.save();
+
+    io.to(socket.meetingId).emit('meeting-ended');
+
+    const roomSockets= await io.in(socket.meetingId).fetchSocket();
+
+    roomSockets.forEach((s)=>{
+      s.leave(socket.meetingId);
+      s.meetingId=null;
+    })
+  });
+
   /* ===============================
      LEAVE MEETING
   ================================ */
