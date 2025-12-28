@@ -1,7 +1,6 @@
 const Meeting = require("../models/Meeting");
 
 const registerMeetingHandlers = (io, socket) => {
-
   /* ===============================
      JOIN MEETING
   ================================ */
@@ -124,6 +123,41 @@ const registerMeetingHandlers = (io, socket) => {
     await meeting.save();
 
     io.to(socket.meetingId).emit("user-unmuted", {
+      userId: targetUserId,
+    });
+  });
+
+  socket.on("host-kick-user", async ({ targetUserId }) => {
+    if (!socket.meetingId) {
+      return;
+    }
+
+    const meeting = await Meeting.findOne({ meetingId: socket.meetingId });
+    if (!meeting) {
+      return;
+    }
+
+    if (meeting.host.toString() != socket.user._id.toString()) return;
+
+    meeting.participants = meeting.participants.filter(
+      (p) => p.user.toString() != targetUserId
+    );
+
+    await meeting.save();
+
+    const targetSocket = [...io.sockets.sockets.values()].find(
+      (s) => s.user?._id.toString() === targetUserId
+    );
+
+    if (targetSocket) {
+      targetSocket.leave(socket.meetingId);
+
+      targetSocket.emit("user-kicked", {
+        reason: "You were removed by host",
+      });
+    }
+
+    socket.to(socket.meetingId).emit("user-left", {
       userId: targetUserId,
     });
   });
