@@ -20,7 +20,7 @@ const createMeeting = async (userId) => {
   const meeting = await Meeting.create({
     meetingId: uuidV4().slice(0, 6),
     host: userId,
-    participants: [{ user: userId, isMuted: false }],
+    participants: [{ user: userId, isMuted: false, role: "HOST" }],
   });
 
   await logMeetingEvent({
