@@ -1,34 +1,36 @@
 const Meeting = require("../models/Meeting");
+const meetingService = require("../services/meeting.serivce");
 
 const registerMeetingHandlers = (io, socket) => {
   /* ===============================
      JOIN MEETING
   ================================ */
   socket.on("join-meeting", async ({ meetingId }) => {
-    const meeting = await Meeting.findOne({ meetingId }).populate(
-      "participants.user",
-      "name email"
-    );
+    try {
+      const meeting = await meetingService.joinMeeting(
+        meetingId,
+        socket.user._id
+      );
 
-    if (!meeting || !meeting.isActive) return;
+      socket.join(meetingId);
+      socket.meetingId = meetingId;
 
-    socket.join(meetingId);
-    socket.meetingId = meetingId;
+      socket.emit("meeting-state", {
+        participants: meeting.participants.map((p) => ({
+          id: p.user,
+          isMuted: p.isMuted,
+        })),
+      });
 
-    socket.emit("meeting-state", {
-      participants: meeting.participants.map((p) => ({
-        id: p.user._id,
-        name: p.user.name,
-        isMuted: p.isMuted,
-      })),
-    });
-
-    socket.to(meetingId).emit("user-joined", {
-      user: {
-        id: socket.user._id,
-        name: socket.user.name,
-      },
-    });
+      socket.to(meetingId).emit("user-joined", {
+        user: {
+          id: socket.user._id,
+          name: socket.user.name,
+        },
+      });
+    } catch (err) {
+      console.log(err.message);
+    }
   });
 
   /* ===============================
@@ -36,19 +38,7 @@ const registerMeetingHandlers = (io, socket) => {
   ================================ */
   socket.on("mute-self", async () => {
     if (!socket.meetingId) return;
-
-    const meeting = await Meeting.findOne({ meetingId: socket.meetingId });
-    if (!meeting) return;
-
-    const participant = meeting.participants.find(
-      (p) => p.user.toString() === socket.user._id.toString()
-    );
-
-    if (!participant) return;
-
-    participant.isMuted = true;
-    await meeting.save();
-
+    await meetingService.setMuteState(socket.meetingId, socket.user._id, true);
     io.to(socket.meetingId).emit("user-muted", {
       userId: socket.user._id,
     });
@@ -60,17 +50,7 @@ const registerMeetingHandlers = (io, socket) => {
   socket.on("unmute-self", async () => {
     if (!socket.meetingId) return;
 
-    const meeting = await Meeting.findOne({ meetingId: socket.meetingId });
-    if (!meeting) return;
-
-    const participant = meeting.participants.find(
-      (p) => p.user.toString() === socket.user._id.toString()
-    );
-
-    if (!participant) return;
-
-    participant.isMuted = false;
-    await meeting.save();
+    await meetingService.setMuteState(socket.meetingId, socket.user._id, false);
 
     io.to(socket.meetingId).emit("user-unmuted", {
       userId: socket.user._id,
@@ -175,21 +155,21 @@ const registerMeetingHandlers = (io, socket) => {
 
     if (meeting.host.toString() !== socket.user._id.toString()) {
       return;
-    };
+    }
 
-    meeting.isActive=false;
-    meeting.endAt=new Date;
+    meeting.isActive = false;
+    meeting.endAt = new Date();
 
     await meeting.save();
 
-    io.to(socket.meetingId).emit('meeting-ended');
+    io.to(socket.meetingId).emit("meeting-ended");
 
-    const roomSockets= await io.in(socket.meetingId).fetchSocket();
+    const roomSockets = await io.in(socket.meetingId).fetchSocket();
 
-    roomSockets.forEach((s)=>{
+    roomSockets.forEach((s) => {
       s.leave(socket.meetingId);
-      s.meetingId=null;
-    })
+      s.meetingId = null;
+    });
   });
 
   /* ===============================

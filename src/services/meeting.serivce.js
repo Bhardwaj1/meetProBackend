@@ -57,6 +57,7 @@ const leaveMeeting = async (meetingId, userId) => {
   return { ended: false };
 };
 
+// End meeting
 const endMeeting = async (meetingId, userId) => {
   const meeting = await getActiveMeeting(meetingId);
 
@@ -68,4 +69,31 @@ const endMeeting = async (meetingId, userId) => {
   await meeting.save();
 
   return meeting;
+};
+
+// Mute/Unmute State
+
+const setMuteState = async (meetingId, userId, isMuted) => {
+  const meeting = await getActiveMeeting(meetingId);
+
+  const participant = meeting.participants.find(
+    (p) => p.user.toString() === userId.toString()
+  );
+
+  if (!participant) {
+    throw new Error("User is not in meeting");
+  }
+
+  participant.isMuted = isMuted;
+  await meeting.save();
+
+  return participant;
+};
+
+module.exports = {
+  createMeeting,
+  joinMeeting,
+  endMeeting,
+  setMuteState,
+  leaveMeeting,
 };
