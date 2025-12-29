@@ -13,6 +13,11 @@ const meetingSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
       },
+      role:{
+        type:String,
+        enum:["HOST","CO_HOST","PARTICPANT"],
+        default:"PARTICIPANT",
+      }
     },
   ],
   createdAt: {
