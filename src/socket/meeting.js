@@ -1,7 +1,6 @@
 const Meeting = require("../models/Meeting");
 
 const registerMeetingHandlers = (io, socket) => {
-
   /* ===============================
      JOIN MEETING
   ================================ */
@@ -126,6 +125,71 @@ const registerMeetingHandlers = (io, socket) => {
     io.to(socket.meetingId).emit("user-unmuted", {
       userId: targetUserId,
     });
+  });
+
+  socket.on("host-kick-user", async ({ targetUserId }) => {
+    if (!socket.meetingId) {
+      return;
+    }
+
+    const meeting = await Meeting.findOne({ meetingId: socket.meetingId });
+    if (!meeting) {
+      return;
+    }
+
+    if (meeting.host.toString() != socket.user._id.toString()) return;
+
+    meeting.participants = meeting.participants.filter(
+      (p) => p.user.toString() != targetUserId
+    );
+
+    await meeting.save();
+
+    const targetSocket = [...io.sockets.sockets.values()].find(
+      (s) => s.user?._id.toString() === targetUserId
+    );
+
+    if (targetSocket) {
+      targetSocket.leave(socket.meetingId);
+
+      targetSocket.emit("user-kicked", {
+        reason: "You were removed by host",
+      });
+    }
+
+    socket.to(socket.meetingId).emit("user-left", {
+      userId: targetUserId,
+    });
+  });
+
+  // End Meeting
+
+  socket.on("host-end-meeting", async () => {
+    if (!socket.meetingId) {
+      return;
+    }
+
+    const meeting = await Meeting.findOne({ meetingId: socket.meetingId });
+
+    if (!meeting) return;
+
+    if (meeting.host.toString() !== socket.user._id.toString()) {
+      return;
+    };
+
+    meeting.isActive=false;
+    meeting.endAt=new Date;
+
+    await meeting.save();
+
+    io.to(socket.meetingId).emit('meeting-ended');
+
+    const roomSockets= await io.in(socket.meetingId).fetchSocket();
+
+    roomSockets.forEach((s)=>{
+      s.leave(socket.meetingId);
+      s.meetingId=null;
+    })
   });
 
   /* ===============================
