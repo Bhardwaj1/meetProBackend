@@ -5,6 +5,18 @@ const { logMeetingEvent } = require("../services/meetingLog.service");
 /* ================================
    INTERNAL HELPERS (PRIVATE)
 ================================ */
+
+const hasRole = (meeting, userId, roles = []) => {
+  const participant = meeting.participants.find(
+    (p) => p.user.toString() === userId.toString()
+  );
+
+  if (!participant) {
+    return false;
+  }
+
+  return roles.includes(participant.role);
+};
 const isHost = (meeting, userId) => {
   return meeting.host.toString() === userId.toString();
 };
