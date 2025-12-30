@@ -206,6 +206,46 @@ const registerMeetingHandlers = (io, socket) => {
       console.log("rejoin-meeting error:", err.message);
     }
   });
+
+  /* ===============================
+   WEBRTC SIGNALING (AUDIO)
+================================ */
+
+  // OFFER
+  socket.on("webrtc-offer", ({ offer, targetUserId }) => {
+    io.sockets.sockets.forEach((s) => {
+      if (s.user?._id.toString() === targetUserId.toString()) {
+        s.emit("webrtc-offer", {
+          offer,
+          from: socket.user._id,
+        });
+      }
+    });
+  });
+
+  // ANSWER
+  socket.on("webrtc-answer", ({ answer, targetUserId }) => {
+    io.sockets.sockets.forEach((s) => {
+      if (s.user?._id.toString() === targetUserId.toString()) {
+        s.emit("webrtc-answer", {
+          answer,
+          from: socket.user._id,
+        });
+      }
+    });
+  });
+
+  // ICE CANDIDATE
+  socket.on("webrtc-ice-candidate",({candidate,targetUserId})=>{
+    io.sockets.sockets.forEach((s)=>{
+      if (s.user?._id.toString()===targetUserId.toString()) {
+        s.emit("webrtc-ice-candidate",{
+          candidate,
+          from:socket?.user?._id
+        })
+      }
+    })
+  })
 };
 
 module.exports = registerMeetingHandlers;
