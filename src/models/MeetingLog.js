@@ -20,6 +20,7 @@ const meetingLogSchema = new mongoose.Schema(
         "HOST_UNMUTED",
         "USER_KICKED",
         "MEETING_ENDED",
+        "USER_PROMOTED_CO_HOST",
       ],
     },
     actor: {
@@ -37,5 +38,4 @@ const meetingLogSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-
-module.exports= mongoose.model("MeetingLogs",meetingLogSchema);
+module.exports = mongoose.model("MeetingLogs", meetingLogSchema);
