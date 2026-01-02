@@ -15,7 +15,7 @@ const meetingSchema = new mongoose.Schema({
       },
       role:{
         type:String,
-        enum:["HOST","CO_HOST","PARTICPANT"],
+        enum:["HOST","CO_HOST","PARTICIPANT"],
         default:"PARTICIPANT",
       }
     },
