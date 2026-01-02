@@ -6,27 +6,29 @@ const registerMeetingHandlers = (io, socket) => {
   ================================ */
   socket.on("join-meeting", async ({ meetingId }) => {
     try {
-      const meeting = await meetingService.joinMeeting(
-        meetingId,
-        socket.user._id
-      );
+      // 1️⃣ ensure DB state
+      const {isNew}=await meetingService.joinMeeting(meetingId, socket.user._id);
 
+      // 2️⃣ join socket room
       socket.join(meetingId);
       socket.meetingId = meetingId;
 
-      socket.emit("meeting-state", {
-        participants: meeting.participants.map((p) => ({
-          id: p.user,
-          isMuted: p.isMuted,
-        })),
-      });
+      // 3️⃣ ALWAYS send full snapshot (authoritative)
+      const snapshot = await meetingService.getMeetingSnapshot(meetingId);
 
-      socket.to(meetingId).emit("user-joined", {
+      socket.emit("meeting-state", snapshot);
+
+      if (isNew) {
+        socket.to(meetingId).emit("user-joined", {
         user: {
           id: socket.user._id,
           name: socket.user.name,
         },
       });
+      }
+
+      // 4️⃣ notify others ONLY if new socket connection
+      
     } catch (err) {
       console.log("join-meeting error:", err.message);
     }
@@ -175,8 +177,18 @@ const registerMeetingHandlers = (io, socket) => {
     try {
       if (!socket.meetingId) return;
 
-      await meetingService.leaveMeeting(socket.meetingId, socket.user._id);
+      const result=await meetingService.leaveMeeting(socket.meetingId, socket.user._id);
 
+      if (result.ended) {
+        io.to(socket.meetingId).emit("meeting-ended");
+        const sockets= await io.in(socket.meetingId).fetchSockets();
+        sockets.forEach(s => {
+          s.leave(socket.meetingId);
+          s.meetingId=null;
+        });
+        return;
+      };
+      // Normal participant leave
       socket.leave(socket.meetingId);
 
       socket.to(socket.meetingId).emit("user-left", {
@@ -189,23 +201,23 @@ const registerMeetingHandlers = (io, socket) => {
     }
   });
 
-  socket.on("rejoin-meeting", async ({ meetingId }) => {
-    try {
-      const snapshot = await meetingService.getMeetingSnapshot(meetingId);
-      if (!snapshot.isActive) {
-        socket.emit("meeting-ended");
-      }
-      socket.join(meetingId);
-      socket.meetingId = meetingId;
-      socket.emit("meeting-state", snapshot);
-      socket.to(meetingId).emit("user-reconnected", {
-        userId: socket.user._id,
-        name: socket.user.name,
-      });
-    } catch (error) {
-      console.log("rejoin-meeting error:", err.message);
-    }
-  });
+  // socket.on("rejoin-meeting", async ({ meetingId }) => {
+  //   try {
+  //     const snapshot = await meetingService.getMeetingSnapshot(meetingId);
+  //     if (!snapshot.isActive) {
+  //       socket.emit("meeting-ended");
+  //     }
+  //     socket.join(meetingId);
+  //     socket.meetingId = meetingId;
+  //     socket.emit("meeting-state", snapshot);
+  //     socket.to(meetingId).emit("user-reconnected", {
+  //       userId: socket.user._id,
+  //       name: socket.user.name,
+  //     });
+  //   } catch (error) {
+  //     console.log("rejoin-meeting error:", err.message);
+  //   }
+  // });
 
   /* ===============================
    WEBRTC SIGNALING (AUDIO)
@@ -236,16 +248,16 @@ const registerMeetingHandlers = (io, socket) => {
   });
 
   // ICE CANDIDATE
-  socket.on("webrtc-ice-candidate",({candidate,targetUserId})=>{
-    io.sockets.sockets.forEach((s)=>{
-      if (s.user?._id.toString()===targetUserId.toString()) {
-        s.emit("webrtc-ice-candidate",{
+  socket.on("webrtc-ice-candidate", ({ candidate, targetUserId }) => {
+    io.sockets.sockets.forEach((s) => {
+      if (s.user?._id.toString() === targetUserId.toString()) {
+        s.emit("webrtc-ice-candidate", {
           candidate,
-          from:socket?.user?._id
-        })
+          from: socket?.user?._id,
+        });
       }
-    })
-  })
+    });
+  });
 };
 
 module.exports = registerMeetingHandlers;

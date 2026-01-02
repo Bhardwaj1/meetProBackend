@@ -80,7 +80,7 @@ const joinMeeting = async (meetingId, userId) => {
     });
   }
 
-  return meeting;
+  return {meeting,isNew:!alreadyJoined};
 };
 
 /* ================================
