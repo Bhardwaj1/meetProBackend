@@ -8,6 +8,7 @@ const registerMeetingHandlers = (io, socket) => {
     try {
       // 1️⃣ ensure DB state
       const {isNew}=await meetingService.joinMeeting(meetingId, socket.user._id);
+      crashThisFunction();
 
       // 2️⃣ join socket room
       socket.join(meetingId);
@@ -31,6 +32,10 @@ const registerMeetingHandlers = (io, socket) => {
       
     } catch (err) {
       console.log("join-meeting error:", err.message);
+      socket.emit("meeting-error",{
+        message:"Meeting Service currently unavailable, please try again later",
+        code:"MEETING_DOWN"
+      })
     }
   });
 
