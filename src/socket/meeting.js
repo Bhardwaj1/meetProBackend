@@ -6,15 +6,13 @@ const registerMeetingHandlers = (io, socket) => {
   ================================ */
   socket.on("join-meeting", async ({ meetingId }) => {
     try {
-      // 1️⃣ ensure DB state
+
       const {isNew}=await meetingService.joinMeeting(meetingId, socket.user._id);
       crashThisFunction();
 
-      // 2️⃣ join socket room
       socket.join(meetingId);
       socket.meetingId = meetingId;
 
-      // 3️⃣ ALWAYS send full snapshot (authoritative)
       const snapshot = await meetingService.getMeetingSnapshot(meetingId);
 
       socket.emit("meeting-state", snapshot);
