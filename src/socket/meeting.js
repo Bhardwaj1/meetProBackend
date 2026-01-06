@@ -1,14 +1,23 @@
 const meetingService = require("../services/meeting.serivce");
 
+let crashCount = 0;
 const registerMeetingHandlers = (io, socket) => {
   /* ===============================
      JOIN MEETING
   ================================ */
   socket.on("join-meeting", async ({ meetingId }) => {
     try {
+      crashCount++;
 
-      const {isNew}=await meetingService.joinMeeting(meetingId, socket.user._id);
-      crashThisFunction();
+      // 💣 Intentional crash for first 2 attempts
+      if (crashCount <= 2) {
+        throw new Error("INTENTIONAL_MEETING_CRASH");
+      }
+
+      const { isNew } = await meetingService.joinMeeting(
+        meetingId,
+        socket.user._id
+      );
 
       socket.join(meetingId);
       socket.meetingId = meetingId;
@@ -19,21 +28,21 @@ const registerMeetingHandlers = (io, socket) => {
 
       if (isNew) {
         socket.to(meetingId).emit("user-joined", {
-        user: {
-          id: socket.user._id,
-          name: socket.user.name,
-        },
-      });
+          user: {
+            id: socket.user._id,
+            name: socket.user.name,
+          },
+        });
       }
 
       // 4️⃣ notify others ONLY if new socket connection
-      
     } catch (err) {
       console.log("join-meeting error:", err.message);
-      socket.emit("meeting-error",{
-        message:"Meeting Service currently unavailable, please try again later",
-        code:"MEETING_DOWN"
-      })
+      socket.emit("meeting-error", {
+        message:
+          "Meeting Service currently unavailable, please try again later",
+        code:err?.message==="INTENTIONAL_MEETING_CRASH"?"MEETING_RETRY": "MEETING_DOWN",
+      });
     }
   });
 
@@ -180,17 +189,20 @@ const registerMeetingHandlers = (io, socket) => {
     try {
       if (!socket.meetingId) return;
 
-      const result=await meetingService.leaveMeeting(socket.meetingId, socket.user._id);
+      const result = await meetingService.leaveMeeting(
+        socket.meetingId,
+        socket.user._id
+      );
 
       if (result.ended) {
         io.to(socket.meetingId).emit("meeting-ended");
-        const sockets= await io.in(socket.meetingId).fetchSockets();
-        sockets.forEach(s => {
+        const sockets = await io.in(socket.meetingId).fetchSockets();
+        sockets.forEach((s) => {
           s.leave(socket.meetingId);
-          s.meetingId=null;
+          s.meetingId = null;
         });
         return;
-      };
+      }
       // Normal participant leave
       socket.leave(socket.meetingId);
 
