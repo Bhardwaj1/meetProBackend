@@ -57,6 +57,26 @@ const login = async (req, res) => {
   });
 };
 
+
+const refreshToken=async(req,res)=>{
+  try {
+    const refreshToken=req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({message:"No Refresh Token"});
+    }
+
+    const decoded=jwt.verify(refreshToken,process.env.JWT_REFRESH_SECRET);
+
+    const newAccessToken= jwt.sign({id:decoded.id},process.env.JWT_SECRET,{expiresIn:"15m"});
+
+    res.json({accessToken:newAccessToken});
+  } catch (error) {
+    return res.status(403).json({message:"Invalid refresh token"});
+  }
+}
+
+
 const verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
   const user = await User.findOne({ email });
@@ -97,4 +117,4 @@ const resendOtp = async (req, res) => {
   res.status(201).json({ message: "Otp Sent Successfully" });
 };
 
-module.exports = { register, login, verifyOtp, resendOtp };
+module.exports = { register, login, verifyOtp, resendOtp ,refreshToken};

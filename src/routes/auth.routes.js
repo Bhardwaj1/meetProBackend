@@ -4,6 +4,7 @@ const {
   login,
   verifyOtp,
   resendOtp,
+  refreshToken,
 } = require("../controllers/auth.controller");
 const {
   registerSchema,
@@ -64,6 +65,8 @@ router.post("/register", validate(registerSchema), register);
  *         description: OTP verified successfully
  */
 router.post("/verify-otp", validate(verifyOtpSchema), verifyOtp);
+
+router.post("/refresh-token",refreshToken)
 
 /**
  * @swagger
