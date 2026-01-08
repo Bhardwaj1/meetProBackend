@@ -28,3 +28,6 @@ const loginSchema = joi.object({
 });
 
 module.exports = { registerSchema, verifyOtpSchema, loginSchema,verifyResendOtpSchema };
+
+
+
