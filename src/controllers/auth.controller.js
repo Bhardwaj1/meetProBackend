@@ -44,11 +44,20 @@ const login = async (req, res) => {
     return res.status(400).json({ error: "Wrong Password" });
   }
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+  const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET,{expiresIn:process.env.JWT_EXPIRE});
+  const refreshToken=jwt.sign({id:user._id},process.env.JWT_REFRESH_SECRET,{expiresIn:process.env.JWT_REFRESH_EXPIRE});
+
+  res.cookie("refreshToken",refreshToken,{
+    httpOnly:true,
+    secure:false, //True in prouction
+    sameSite:"strict",
+    maxAge:24*60*60*1000
+  });
+
   res.status(200).json({
     success: true,
     message: "Login Succesfully",
-    token,
+    accessToken,
     user: {
       id: user?._id,
       name: user.email,

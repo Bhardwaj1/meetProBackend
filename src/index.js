@@ -6,6 +6,7 @@ const cors = require("cors");
 const swaggerSpec = require("./config/swagger");
 const { Server } = require("socket.io");
 const http = require("http");
+const cookieParser= require("cookie-parser");
 
 // Routes
 const userRoutes = require("./routes/userRoutes");
@@ -18,6 +19,7 @@ const PORT = process.env.PORT;
 
 connectDB();
 app.use(express.json());
+app.use(cookieParser());
 app.use(cors());
 
 const server = http.createServer(app);
