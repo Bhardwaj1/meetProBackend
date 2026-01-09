@@ -44,20 +44,23 @@ const login = async (req, res) => {
     return res.status(400).json({ error: "Wrong Password" });
   }
 
-  const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET,{expiresIn:process.env.JWT_EXPIRE});
-  const refreshToken=jwt.sign({id:user._id},process.env.JWT_REFRESH_SECRET,{expiresIn:process.env.JWT_REFRESH_EXPIRE});
-
-
-
+  const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE,
+  });
+  const refreshToken = jwt.sign(
+    { id: user._id },
+    process.env.JWT_REFRESH_SECRET,
+    { expiresIn: process.env.JWT_REFRESH_EXPIRE }
+  );
 
   user.refreshToken = refreshToken;
   await user.save();
 
-  res.cookie("refreshToken",refreshToken,{
-    httpOnly:true,
-    secure:false, //True in prouction
-    sameSite:"strict",
-    maxAge:24*60*60*1000
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: false, //True in prouction
+    sameSite: "strict",
+    maxAge: 24 * 60 * 60 * 1000,
   });
 
   res.status(200).json({
@@ -72,46 +75,50 @@ const login = async (req, res) => {
   });
 };
 
-
-const refreshToken=async(req,res)=>{
+const refreshToken = async (req, res) => {
   try {
-    const oldRefreshToken=req.cookies.refreshToken;
+    const oldRefreshToken = req.cookies.refreshToken;
 
     if (!oldRefreshToken) {
-      return res.status(401).json({message:"No Refresh Token"});
+      return res.status(401).json({ message: "No Refresh Token" });
     }
 
-    const user= await User.findOne({refreshToken:oldRefreshToken});
+    const user = await User.findOne({ refreshToken: oldRefreshToken });
 
     if (!user) {
-      res.clearCookie('refreshToken');
-      return res.status(403).json({message:"Refresh Token Revoked"});
-    };
+      res.clearCookie("refreshToken");
+      return res.status(403).json({ message: "Refresh Token Revoked" });
+    }
 
-    const decoded=jwt.verify(oldRefreshToken,process.env.JWT_REFRESH_SECRET);
+    const decoded = jwt.verify(oldRefreshToken, process.env.JWT_REFRESH_SECRET);
 
-    if (decoded.id.toString() !==user._id.toString()) {
-      res.clearCookie('refreshToken');
-      return res.status(403).json({message:"Token User Mismatch"});
-    };
+    if (decoded.id.toString() !== user._id.toString()) {
+      res.clearCookie("refreshToken");
+      return res.status(403).json({ message: "Token User Mismatch" });
+    }
 
-    const newAccessToken= jwt.sign({id:user._id},process.env.JWT_SECRET,{expiresIn:"15m"});
+    const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "15m",
+    });
 
-    const newRefreshToken=jwt.sign({id:user._id},process.env.JWT_REFRESH_SECRET,{expiresIn:"7d"})
-    user.refreshToken=newRefreshToken;
+    const newRefreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: "7d" }
+    );
+    user.refreshToken = newRefreshToken;
     await user.save();
-    res.cookie("refreshToken",newRefreshToken,{
-      httpOnly:true,
-      secure:false,//True in production
-      sameSite:'strict',
-      maxAge:24*60*60*1000
-    })
-    res.json({accessToken:newAccessToken});
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: false, //True in production
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+    res.json({ accessToken: newAccessToken });
   } catch (error) {
-    return res.status(403).json({message:"Invalid refresh token"});
+    return res.status(403).json({ message: "Invalid refresh token" });
   }
-}
-
+};
 
 const verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
@@ -153,4 +160,31 @@ const resendOtp = async (req, res) => {
   res.status(201).json({ message: "Otp Sent Successfully" });
 };
 
-module.exports = { register, login, verifyOtp, resendOtp ,refreshToken};
+const logout = async (req, res) => {
+  try {
+    const refreshToken = req.cookie.refreshToken;
+    if (refreshToken) {
+      await User.findOneAndUpdate(
+        {
+          refreshToken,
+        },
+        {
+          refreshToken: null,
+        }
+      );
+    }
+    res.clearCookie("refreshToken");
+    res.json({ message: "Logout Successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Logout Failed", error: error.message });
+  }
+};
+
+module.exports = {
+  register,
+  login,
+  verifyOtp,
+  resendOtp,
+  refreshToken,
+  logout,
+};
