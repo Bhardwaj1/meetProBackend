@@ -75,29 +75,37 @@ const login = async (req, res) => {
 
 const refreshToken=async(req,res)=>{
   try {
-    const refreshToken=req.cookies.refreshToken;
+    const oldRefreshToken=req.cookies.refreshToken;
 
-    if (!refreshToken) {
+    if (!oldRefreshToken) {
       return res.status(401).json({message:"No Refresh Token"});
     }
 
-    const user= await User.findOne({refreshToken});
+    const user= await User.findOne({refreshToken:oldRefreshToken});
 
     if (!user) {
+      res.clearCookie('refreshToken');
       return res.status(403).json({message:"Refresh Token Revoked"});
     };
 
-
-
-    const decoded=jwt.verify(refreshToken,process.env.JWT_REFRESH_SECRET);
+    const decoded=jwt.verify(oldRefreshToken,process.env.JWT_REFRESH_SECRET);
 
     if (decoded.id.toString() !==user._id.toString()) {
       res.clearCookie('refreshToken');
       return res.status(403).json({message:"Token User Mismatch"});
     };
 
-    const newAccessToken= jwt.sign({id:decoded.id},process.env.JWT_SECRET,{expiresIn:"15m"});
+    const newAccessToken= jwt.sign({id:user._id},process.env.JWT_SECRET,{expiresIn:"15m"});
 
+    const newRefreshToken=jwt.sign({id:user._id},process.env.JWT_REFRESH_SECRET,{expiresIn:"7d"})
+    user.refreshToken=newRefreshToken;
+    await user.save();
+    res.cookie("refreshToken",newRefreshToken,{
+      httpOnly:true,
+      secure:false,//True in production
+      sameSite:'strict',
+      maxAge:24*60*60*1000
+    })
     res.json({accessToken:newAccessToken});
   } catch (error) {
     return res.status(403).json({message:"Invalid refresh token"});
