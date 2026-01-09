@@ -47,6 +47,12 @@ const login = async (req, res) => {
   const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET,{expiresIn:process.env.JWT_EXPIRE});
   const refreshToken=jwt.sign({id:user._id},process.env.JWT_REFRESH_SECRET,{expiresIn:process.env.JWT_REFRESH_EXPIRE});
 
+
+
+
+  user.refreshToken = refreshToken;
+  await user.save();
+
   res.cookie("refreshToken",refreshToken,{
     httpOnly:true,
     secure:false, //True in prouction
@@ -75,7 +81,20 @@ const refreshToken=async(req,res)=>{
       return res.status(401).json({message:"No Refresh Token"});
     }
 
+    const user= await User.findOne({refreshToken});
+
+    if (!user) {
+      return res.status(403).json({message:"Refresh Token Revoked"});
+    };
+
+
+
     const decoded=jwt.verify(refreshToken,process.env.JWT_REFRESH_SECRET);
+
+    if (decoded.id.toString() !==user._id.toString()) {
+      res.clearCookie('refreshToken');
+      return res.status(403).json({message:"Token User Mismatch"});
+    };
 
     const newAccessToken= jwt.sign({id:decoded.id},process.env.JWT_SECRET,{expiresIn:"15m"});
 

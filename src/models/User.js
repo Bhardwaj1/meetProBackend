@@ -16,6 +16,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    refreshToken:{
+      type:String,
+      default:null
+    },
     otp: String,
     otpExipreAt: Date,
     googleId: String,

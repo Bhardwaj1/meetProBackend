@@ -1,3 +1,7 @@
 {
-  "amazonQ.enabled": false
+  "amazonQ.enabled": false,
+  "amazonQ.inlineSuggestions.enabled": false,
+  "amazonQ.chat.enabled": false,
+  "amazonQ.codeSuggestions.enabled": false,
+  "amazonQ.explain.enabled": false
 }
