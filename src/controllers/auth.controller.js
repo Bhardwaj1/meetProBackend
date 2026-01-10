@@ -23,7 +23,13 @@ const register = async (req, res) => {
   });
 
   await user.save();
-  await sendEmail(email, name, otp);
+
+  try {
+    await sendEmail(email, name, otp);
+  } catch (error) {
+    console.log("Email failed",error.message);
+  }
+  
 
   res
     .status(201)
