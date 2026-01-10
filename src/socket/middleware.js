@@ -20,7 +20,10 @@ const socketAuth = async (socket, next) => {
     socket.user = user; // 🔥 attach user to socket
     next();
   } catch (err) {
-    next(new Error("Authentication failed"));
+    if (err.name == "TokenExpiredError") {
+      return next(new Error("Token expired"));
+    }
+    return next(new Error("Authentication failed"));
   }
 };
 
