@@ -5,7 +5,7 @@ const registerMeetingHandler = require("./meeting");
 const initSocket = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: "*",
+      origin: "http://localhost:5173", 
       methods: ["GET", "POST"],
       credentials: true,
     },
@@ -14,9 +14,12 @@ const initSocket = (server) => {
   io.use(socketAuth);
 
   io.on("connection", (socket) => {
+    console.log("🔌 Socket connected:", socket.id);
+
     registerMeetingHandler(io, socket);
+
     socket.on("disconnect", () => {
-      console.log("Socket disconnected", socket.user.name);
+      console.log("❌ Socket disconnected:", socket.user?.name);
     });
   });
 
