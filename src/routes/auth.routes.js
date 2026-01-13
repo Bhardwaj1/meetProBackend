@@ -5,6 +5,7 @@ const {
   verifyOtp,
   resendOtp,
   refreshToken,
+  logout,
 } = require("../controllers/auth.controller");
 const {
   registerSchema,
@@ -113,5 +114,7 @@ router.post("/resend-otp", validate(verifyResendOtpSchema), resendOtp);
  *         description: Login successful
  */
 router.post("/login", validate(loginSchema), login);
+
+router.post("/logout", logout);
 
 module.exports = router;
