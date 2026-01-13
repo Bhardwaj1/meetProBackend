@@ -27,9 +27,8 @@ const register = async (req, res) => {
   try {
     await sendEmail(email, name, otp);
   } catch (error) {
-    console.log("Email failed",error.message);
+    console.log("Email failed", error.message);
   }
-  
 
   res
     .status(201)
@@ -168,7 +167,7 @@ const resendOtp = async (req, res) => {
 
 const logout = async (req, res) => {
   try {
-    const refreshToken = req.cookie.refreshToken;
+    const refreshToken = req.cookies.refreshToken;
     if (refreshToken) {
       await User.findOneAndUpdate(
         {
@@ -179,7 +178,11 @@ const logout = async (req, res) => {
         }
       );
     }
-    res.clearCookie("refreshToken");
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: false, //true in prod
+      sameSite: "strict",
+    });
     res.json({ message: "Logout Successfully" });
   } catch (error) {
     res.status(500).json({ message: "Logout Failed", error: error.message });
