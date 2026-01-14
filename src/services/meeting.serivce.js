@@ -7,6 +7,7 @@ const { logMeetingEvent } = require("./meetingLog.service");
 ================================ */
 
 const getParticipant = (meeting, userId) => {
+  console.log(meeting);
   return meeting.participants.find(
     (p) => p.user.toString() === userId.toString()
   );
@@ -62,7 +63,7 @@ const getActiveMeeting = async (meetingId) => {
 const requestJoinMeeting = async (meetingId, userId, name) => {
   const meeting = await getActiveMeeting(meetingId);
 
-  if (getParticipant(meetingId, userId)) {
+  if (getParticipant(meeting, userId)) {
     throw new Error("Already Joined Meeting");
   }
 
