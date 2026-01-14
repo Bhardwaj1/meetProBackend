@@ -22,20 +22,10 @@ const createMeeting = asyncHandler(async (req, res) => {
 ================================ */
 const joinMeeting = asyncHandler(async (req, res) => {
   const { meetingId } = req.body;
-
-  if (!meetingId) {
-    return res.status(400).json({
-      success: false,
-      message: "Meeting Id is required",
-    });
-  }
-
-  const meeting = await meetingService.joinMeeting(meetingId,req.user._id);
-
+  await meetingService.requestJoinMeeting(meetingId,req.user._id,req.user.name);
   res.status(200).json({
     success: true,
-    message: "Meeting joined successfully",
-    meetingId: meeting.meetingId,
+    message: "Join request sent. Waiting for host approval",
   });
 });
 

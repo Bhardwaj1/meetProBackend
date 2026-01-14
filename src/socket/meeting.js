@@ -1,19 +1,11 @@
 const meetingService = require("../services/meeting.serivce");
 
-let crashCount = 0;
 const registerMeetingHandlers = (io, socket) => {
   /* ===============================
-     JOIN MEETING
-  ================================ */
+   JOIN MEETING (AFTER APPROVAL)
+================================ */
   socket.on("join-meeting", async ({ meetingId }) => {
     try {
-      crashCount++;
-
-      // 💣 Intentional crash for first 2 attempts
-      if (crashCount <= 2) {
-        throw new Error("INTENTIONAL_MEETING_CRASH");
-      }
-
       const { isNew } = await meetingService.joinMeeting(
         meetingId,
         socket.user._id
@@ -23,7 +15,6 @@ const registerMeetingHandlers = (io, socket) => {
       socket.meetingId = meetingId;
 
       const snapshot = await meetingService.getMeetingSnapshot(meetingId);
-
       socket.emit("meeting-state", snapshot);
 
       if (isNew) {
@@ -34,17 +25,34 @@ const registerMeetingHandlers = (io, socket) => {
           },
         });
       }
-
-      // 4️⃣ notify others ONLY if new socket connection
     } catch (err) {
       console.log("join-meeting error:", err.message);
       socket.emit("meeting-error", {
-        message:
-          "Meeting Service currently unavailable, please try again later",
-        code:err?.message==="INTENTIONAL_MEETING_CRASH"?"MEETING_RETRY": "MEETING_DOWN",
+        message: err.message || "Unable to join meeting",
+        code: "JOIN_FAILED",
       });
     }
   });
+
+  /* ===============================
+   HOST → APPROVE JOIN
+================================ */
+ socket.on("approve-join",async({meetingId,userId})=>{
+  try {
+    const waitingUser= await meetingService.approveJoinMeeting(
+      meetingId,socket.user._id,userId
+    );
+    // Notify user approved
+    io.to(userId.toString()).emit("join-approved",{meetingId});
+    io.to(meetingId).emit("user-joined",{user:{
+      id:userId,
+      name:waitingUser.name
+    }})
+  } catch (error) {
+    console.log("approve-join error:", error.message);
+    socket.emit("join-error",{message:error.message});
+  }
+ })
 
   /* ===============================
      MUTE SELF

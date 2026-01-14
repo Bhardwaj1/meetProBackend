@@ -57,6 +57,60 @@ const getActiveMeeting = async (meetingId) => {
 };
 
 /* ================================
+   REQUEST JOIN MEETING
+================================ */
+const requestJoinMeeting = async (meetingId, userId, name) => {
+  const meeting = await getActiveMeeting(meetingId);
+
+  if (getParticipant(meetingId, userId)) {
+    throw new Error("Already Joined Meeting");
+  }
+
+  if (meeting.waitingRoom.some((w) => w.userId.equals(userId))) {
+    throw new Error("Already Requested to Join Meeting");
+  }
+
+  meeting.waitingRoom.push({ userId, name });
+
+  await meeting.save();
+};
+/* ================================
+   APPROVE JOIN MEETING
+================================ */
+const approveJoinMeeting = async (meetingId, hostId, targetUserId) => {
+  const meeting = await getActiveMeeting(meetingId);
+
+  if (!hasRole(meeting, hostId, ["HOST"])) {
+    throw new Error("Only host can approve join request");
+  }
+
+  const waitingUser = meeting.waitingRoom.filter(
+    (w) => !w.userId.equals(targetUserId)
+  );
+
+  if (!waitingUser) {
+    throw new Error("User not in waititng room");
+  };
+
+  meeting.waitingRoom=meeting.waitingRoom.filter((w)=>!w.userId.equals(targetUserId));
+
+  meeting.participants.push({
+    user:waitingUser.userId,
+    role:"PARTICIPANT",
+  });
+
+  await meeting.save();
+  await logMeetingEvent({
+    meetingId,
+    action:"USER_APPROVED",
+    actor:hostId,
+    target:targetUserId,
+  })
+
+  return waitingUser;
+};
+
+/* ================================
    JOIN MEETING
 ================================ */
 const joinMeeting = async (meetingId, userId) => {
@@ -80,7 +134,7 @@ const joinMeeting = async (meetingId, userId) => {
     });
   }
 
-  return {meeting,isNew:!alreadyJoined};
+  return { meeting, isNew: !alreadyJoined };
 };
 
 /* ================================
@@ -170,12 +224,7 @@ const setMuteState = async (meetingId, userId, isMuted) => {
 /* ================================
    HOST / CO_HOST → MUTE / UNMUTE USER
 ================================ */
-const hostSetMuteState = async (
-  meetingId,
-  actorId,
-  targetUserId,
-  isMuted
-) => {
+const hostSetMuteState = async (meetingId, actorId, targetUserId, isMuted) => {
   const meeting = await getActiveMeeting(meetingId);
 
   if (!hasRole(meeting, actorId, ["HOST", "CO_HOST"])) {
@@ -298,4 +347,6 @@ module.exports = {
   kickUser,
   promoteToCoHost,
   getMeetingSnapshot,
+  requestJoinMeeting,
+  approveJoinMeeting
 };
