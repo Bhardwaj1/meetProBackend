@@ -6,25 +6,25 @@ const registerMeetingHandlers = (io, socket) => {
 ================================ */
   socket.on("join-meeting", async ({ meetingId }) => {
     try {
-      const { isNew } = await meetingService.joinMeeting(
-        meetingId,
-        socket.user._id
-      );
+
+      const meeting= await meetingService.getActiveMeeting(meetingId);
+
+      const isHost=meeting.host.toString()===socket.user._id.toString();
+
+      const isParticipant=meeting.participants.some(p=>p.user.toString()===socket.user._id.toString());
+
+      if (!isHost && !isParticipant) {
+        socket.emit("join-denied",{
+          reason:"WAITING APPROVAL"
+        });
+        return;
+      };
 
       socket.join(meetingId);
       socket.meetingId = meetingId;
 
       const snapshot = await meetingService.getMeetingSnapshot(meetingId);
       socket.emit("meeting-state", snapshot);
-
-      if (isNew) {
-        socket.to(meetingId).emit("user-joined", {
-          user: {
-            id: socket.user._id,
-            name: socket.user.name,
-          },
-        });
-      }
     } catch (err) {
       console.log("join-meeting error:", err.message);
       socket.emit("meeting-error", {
