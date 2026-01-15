@@ -63,6 +63,9 @@ const getActiveMeeting = async (meetingId) => {
 const requestJoinMeeting = async (meetingId, userId, name) => {
   const meeting = await getActiveMeeting(meetingId);
 
+  console.log("=== REQUEST JOIN DEBUG ===");
+  console.log("Before push - waitingRoom:", meeting.waitingRoom);
+
   if (getParticipant(meeting, userId)) {
     throw new Error("Already Joined Meeting");
   }
@@ -72,8 +75,12 @@ const requestJoinMeeting = async (meetingId, userId, name) => {
   }
 
   meeting.waitingRoom.push({ userId, name });
+  console.log("After push - waitingRoom:", meeting.waitingRoom);
 
   await meeting.save();
+  console.log("After save - waitingRoom:", meeting.waitingRoom);
+  
+  return meeting;
 };
 /* ================================
    APPROVE JOIN MEETING
@@ -81,26 +88,38 @@ const requestJoinMeeting = async (meetingId, userId, name) => {
 const approveJoinMeeting = async (meetingId, hostId, targetUserId) => {
   const meeting = await getActiveMeeting(meetingId);
 
+  console.log("=== APPROVE JOIN DEBUG ===");
+  console.log("Before approval - waitingRoom:", meeting.waitingRoom);
+  console.log("Before approval - participants:", meeting.participants);
+  console.log("targetUserId:", targetUserId);
+
   if (!hasRole(meeting, hostId, ["HOST"])) {
     throw new Error("Only host can approve join request");
   }
 
-  const waitingUser = meeting.waitingRoom.filter(
-    (w) => !w.userId.equals(targetUserId)
+  const waitingUser = meeting.waitingRoom.find(
+    (w) => w.userId.toString() === targetUserId.toString()
   );
 
-  if (!waitingUser) {
-    throw new Error("User not in waititng room");
-  };
+  console.log("Found waitingUser:", waitingUser);
 
-  meeting.waitingRoom=meeting.waitingRoom.filter((w)=>!w.userId.equals(targetUserId));
+  if (!waitingUser) {
+    throw new Error("User not in waiting room");
+  }
+
+  meeting.waitingRoom = meeting.waitingRoom.filter((w) => w.userId.toString() !== targetUserId.toString());
 
   meeting.participants.push({
-    user:waitingUser.userId,
-    role:"PARTICIPANT",
+    user: targetUserId,
+    role: "PARTICIPANT",
   });
 
+  console.log("After approval - waitingRoom:", meeting.waitingRoom);
+  console.log("After approval - participants:", meeting.participants);
+
   await meeting.save();
+  console.log("After save - DONE");
+  
   await logMeetingEvent({
     meetingId,
     action:"USER_APPROVED",

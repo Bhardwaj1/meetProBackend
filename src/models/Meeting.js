@@ -44,7 +44,7 @@ const meetingSchema = new mongoose.Schema(
         },
         requestedAt: {
           type: Date,
-          default: Date.now(),
+          default: Date.now,
         },
       },
     ],

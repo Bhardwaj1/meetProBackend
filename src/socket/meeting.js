@@ -73,13 +73,15 @@ const registerMeetingHandlers = (io, socket) => {
       console.log(meetingId, socket.user._id, socket.user.name);
 
       // Notify Host only
-      io.to(
-        meeting.host.toString().emit("join-requested", {
-          userId: socket.user._id,
-          name: socket.user.name,
-          requestedAt: Date.now(),
-        })
-      );
+      io.sockets.sockets.forEach((s) => {
+        if (s.user?._id.toString() === meeting.host.toString()) {
+          s.emit("join-requested", {
+            userId: socket.user._id,
+            name: socket.user.name,
+            requestedAt: Date.now(),
+          });
+        }
+      });
 
       socket.emit("waiting");
     } catch (error) {

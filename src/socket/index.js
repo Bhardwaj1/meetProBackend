@@ -14,8 +14,11 @@ const initSocket = (server) => {
   io.use(socketAuth);
 
   io.on("connection", (socket) => {
-    console.log("🔌 Socket connected:", socket.id);
+    if (socket.user && socket.user._id) {
     socket.join(socket.user._id.toString());
+    console.log(`✅ User ${socket.user._id} joined personal room`);
+  }
+  
 
     registerMeetingHandler(io, socket);
 
