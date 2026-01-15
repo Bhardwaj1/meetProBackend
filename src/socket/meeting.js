@@ -6,19 +6,20 @@ const registerMeetingHandlers = (io, socket) => {
 ================================ */
   socket.on("join-meeting", async ({ meetingId }) => {
     try {
+      const meeting = await meetingService.getActiveMeeting(meetingId);
 
-      const meeting= await meetingService.getActiveMeeting(meetingId);
+      const isHost = meeting.host.toString() === socket.user._id.toString();
 
-      const isHost=meeting.host.toString()===socket.user._id.toString();
-
-      const isParticipant=meeting.participants.some(p=>p.user.toString()===socket.user._id.toString());
+      const isParticipant = meeting.participants.some(
+        (p) => p.user.toString() === socket.user._id.toString()
+      );
 
       if (!isHost && !isParticipant) {
-        socket.emit("join-denied",{
-          reason:"WAITING APPROVAL"
+        socket.emit("join-denied", {
+          reason: "WAITING APPROVAL",
         });
         return;
-      };
+      }
 
       socket.join(meetingId);
       socket.meetingId = meetingId;
@@ -37,22 +38,55 @@ const registerMeetingHandlers = (io, socket) => {
   /* ===============================
    HOST → APPROVE JOIN
 ================================ */
- socket.on("approve-join",async({meetingId,userId})=>{
-  try {
-    const waitingUser= await meetingService.approveJoinMeeting(
-      meetingId,socket.user._id,userId
-    );
-    // Notify user approved
-    io.to(userId.toString()).emit("join-approved",{meetingId});
-    io.to(meetingId).emit("user-joined",{user:{
-      id:userId,
-      name:waitingUser.name
-    }})
-  } catch (error) {
-    console.log("approve-join error:", error.message);
-    socket.emit("join-error",{message:error.message});
-  }
- })
+  socket.on("approve-join", async ({ meetingId, userId }) => {
+    try {
+      const waitingUser = await meetingService.approveJoinMeeting(
+        meetingId,
+        socket.user._id,
+        userId
+      );
+      // Notify user approved
+      io.to(userId.toString()).emit("join-approved", { meetingId });
+      io.to(meetingId).emit("user-joined", {
+        user: {
+          id: userId,
+          name: waitingUser.name,
+        },
+      });
+    } catch (error) {
+      console.log("approve-join error:", error.message);
+      socket.emit("join-error", { message: error.message });
+    }
+  });
+  /* ===============================
+   REQUEST JOIN (WAITING ROOM)
+================================ */
+
+  socket.on("request-join", async ({ meetingId }) => {
+    try {
+      const meeting = await meetingService.requestJoinMeeting(
+        meetingId,
+        socket.user._id,
+        socket.user.name
+      );
+
+      console.log(meetingId, socket.user._id, socket.user.name);
+
+      // Notify Host only
+      io.to(
+        meeting.host.toString().emit("join-requested", {
+          userId: socket.user._id,
+          name: socket.user.name,
+          requestedAt: Date.now(),
+        })
+      );
+
+      socket.emit("waiting");
+    } catch (error) {
+      console.log("request-join error:", error.message);
+      socket.emit("join-error", { message: error.message });
+    }
+  });
 
   /* ===============================
      MUTE SELF

@@ -5,7 +5,7 @@ const registerMeetingHandler = require("./meeting");
 const initSocket = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: "http://localhost:5173", 
+      origin: "http://localhost:5173",
       methods: ["GET", "POST"],
       credentials: true,
     },
@@ -15,6 +15,7 @@ const initSocket = (server) => {
 
   io.on("connection", (socket) => {
     console.log("🔌 Socket connected:", socket.id);
+    socket.join(socket.user._id.toString());
 
     registerMeetingHandler(io, socket);
 
