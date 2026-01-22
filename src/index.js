@@ -7,6 +7,7 @@ const swaggerSpec = require("./config/swagger");
 const { Server } = require("socket.io");
 const http = require("http");
 const cookieParser = require("cookie-parser");
+const morgan = require("morgan");
 
 // Routes
 const userRoutes = require("./routes/userRoutes");
@@ -25,9 +26,9 @@ app.use(
   cors({
     origin: "http://localhost:5173",
     credentials: true,
-  })
+  }),
 );
-
+app.use(morgan("combined"));
 
 const server = http.createServer(app);
 
