@@ -19,6 +19,13 @@ const registerMeetingHandlers = (io, socket) => {
           reason: "WAITING APPROVAL",
         });
         return;
+      };
+
+      if (isHost) {
+        meeting.hostSocketId=socket._id;
+        await meeting.save();
+
+        console.log(`Host ${socket.user._id} joined meeting ${meetingId}`);
       }
 
       socket.join(meetingId);

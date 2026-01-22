@@ -9,7 +9,7 @@ const { logMeetingEvent } = require("./meetingLog.service");
 const getParticipant = (meeting, userId) => {
   console.log(meeting);
   return meeting.participants.find(
-    (p) => p.user.toString() === userId.toString()
+    (p) => p.user.toString() === userId.toString(),
   );
 };
 
@@ -50,10 +50,9 @@ const createMeeting = async (userId) => {
 ================================ */
 const getActiveMeeting = async (meetingId) => {
   const meeting = await Meeting.findOne({ meetingId });
-
   if (!meeting) throw new Error("Meeting not found");
   if (!meeting.isActive) throw new Error("Meeting already ended");
-
+  console.log({meeting})
   return meeting;
 };
 
@@ -79,7 +78,7 @@ const requestJoinMeeting = async (meetingId, userId, name) => {
 
   await meeting.save();
   console.log("After save - waitingRoom:", meeting.waitingRoom);
-  
+
   return meeting;
 };
 /* ================================
@@ -98,7 +97,7 @@ const approveJoinMeeting = async (meetingId, hostId, targetUserId) => {
   }
 
   const waitingUser = meeting.waitingRoom.find(
-    (w) => w.userId.toString() === targetUserId.toString()
+    (w) => w.userId.toString() === targetUserId.toString(),
   );
 
   console.log("Found waitingUser:", waitingUser);
@@ -107,7 +106,9 @@ const approveJoinMeeting = async (meetingId, hostId, targetUserId) => {
     throw new Error("User not in waiting room");
   }
 
-  meeting.waitingRoom = meeting.waitingRoom.filter((w) => w.userId.toString() !== targetUserId.toString());
+  meeting.waitingRoom = meeting.waitingRoom.filter(
+    (w) => w.userId.toString() !== targetUserId.toString(),
+  );
 
   meeting.participants.push({
     user: targetUserId,
@@ -119,13 +120,13 @@ const approveJoinMeeting = async (meetingId, hostId, targetUserId) => {
 
   await meeting.save();
   console.log("After save - DONE");
-  
+
   await logMeetingEvent({
     meetingId,
-    action:"USER_APPROVED",
-    actor:hostId,
-    target:targetUserId,
-  })
+    action: "USER_APPROVED",
+    actor: hostId,
+    target: targetUserId,
+  });
 
   return waitingUser;
 };
@@ -181,7 +182,7 @@ const leaveMeeting = async (meetingId, userId) => {
   const beforeCount = meeting.participants.length;
 
   meeting.participants = meeting.participants.filter(
-    (p) => p.user.toString() !== userId.toString()
+    (p) => p.user.toString() !== userId.toString(),
   );
 
   if (meeting.participants.length !== beforeCount) {
@@ -280,7 +281,7 @@ const kickUser = async (meetingId, actorId, targetUserId) => {
   const beforeCount = meeting.participants.length;
 
   meeting.participants = meeting.participants.filter(
-    (p) => p.user.toString() !== targetUserId.toString()
+    (p) => p.user.toString() !== targetUserId.toString(),
   );
 
   if (meeting.participants.length === beforeCount) {
@@ -335,7 +336,7 @@ const promoteToCoHost = async (meetingId, hostId, targetUserId) => {
 const getMeetingSnapshot = async (meetingId) => {
   const meeting = await Meeting.findOne({ meetingId }).populate(
     "participants.user",
-    "name email"
+    "name email",
   );
 
   if (!meeting) throw new Error("Meeting not found");
@@ -368,5 +369,5 @@ module.exports = {
   promoteToCoHost,
   getMeetingSnapshot,
   requestJoinMeeting,
-  approveJoinMeeting
+  approveJoinMeeting,
 };

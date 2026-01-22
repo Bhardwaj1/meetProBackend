@@ -9,6 +9,9 @@ const meetingSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    hostSocketId: {
+      type: String,
+    },
     participants: [
       {
         user: {
@@ -48,12 +51,13 @@ const meetingSchema = new mongoose.Schema(
         },
       },
     ],
+
     endAt: {
       type: Date,
     },
     isActive: { type: Boolean, default: true, index: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Meeting", meetingSchema);
