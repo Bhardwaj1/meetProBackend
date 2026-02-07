@@ -22,9 +22,10 @@ const registerMeetingHandlers = (io, socket) => {
       };
 
       if (isHost) {
-        meeting.hostSocketId=socket._id;
+        meeting.hostSocketId = socket.id;
         await meeting.save();
 
+        socket.join(`${meetingId}-host`);
         console.log(`Host ${socket.user._id} joined meeting ${meetingId}`);
       }
 
@@ -80,14 +81,10 @@ const registerMeetingHandlers = (io, socket) => {
       console.log(meetingId, socket.user._id, socket.user.name);
 
       // Notify Host only
-      io.sockets.sockets.forEach((s) => {
-        if (s.user?._id.toString() === meeting.host.toString()) {
-          s.emit("join-requested", {
-            userId: socket.user._id,
-            name: socket.user.name,
-            requestedAt: Date.now(),
-          });
-        }
+      io.to(`${meetingId}-host`).emit("join-requested", {
+        userId: socket.user._id,
+        name: socket.user.name,
+        requestedAt: Date.now(),
       });
 
       socket.emit("waiting");
