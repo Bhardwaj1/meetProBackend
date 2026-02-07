@@ -6,15 +6,23 @@ const registerMeetingHandlers = (io, socket) => {
 ================================ */
   socket.on("join-meeting", async ({ meetingId }) => {
     try {
+      console.log("🚪 Backend: join-meeting received");
+      console.log("   meetingId:", meetingId);
+      console.log("   userId:", socket.user._id);
+      console.log("   socketId:", socket.id);
+
       const meeting = await meetingService.getActiveMeeting(meetingId);
 
       const isHost = meeting.host.toString() === socket.user._id.toString();
+      console.log("   isHost:", isHost);
 
       const isParticipant = meeting.participants.some(
         (p) => p.user.toString() === socket.user._id.toString()
       );
+      console.log("   isParticipant:", isParticipant);
 
       if (!isHost && !isParticipant) {
+        console.log("❌ Backend: User not authorized, sending join-denied");
         socket.emit("join-denied", {
           reason: "WAITING APPROVAL",
         });
@@ -25,17 +33,21 @@ const registerMeetingHandlers = (io, socket) => {
         meeting.hostSocketId = socket.id;
         await meeting.save();
 
-        socket.join(`${meetingId}-host`);
-        console.log(`Host ${socket.user._id} joined meeting ${meetingId}`);
+        const hostRoom = `${meetingId}-host`;
+        socket.join(hostRoom);
+        console.log("✅ Backend: Host joined room:", hostRoom);
+        console.log("   Host room sockets:", io.sockets.adapter.rooms.get(hostRoom));
       }
 
       socket.join(meetingId);
       socket.meetingId = meetingId;
+      console.log("✅ Backend: User joined meeting room:", meetingId);
 
       const snapshot = await meetingService.getMeetingSnapshot(meetingId);
       socket.emit("meeting-state", snapshot);
+      console.log("✅ Backend: meeting-state sent to user");
     } catch (err) {
-      console.log("join-meeting error:", err.message);
+      console.log("❌ Backend: join-meeting error:", err.message);
       socket.emit("meeting-error", {
         message: err.message || "Unable to join meeting",
         code: "JOIN_FAILED",
@@ -72,24 +84,43 @@ const registerMeetingHandlers = (io, socket) => {
 
   socket.on("request-join", async ({ meetingId }) => {
     try {
-      const meeting = await meetingService.requestJoinMeeting(
-        meetingId,
-        socket.user._id,
-        socket.user.name
-      );
+      console.log("🔔 Backend: request-join received");
+      console.log("   meetingId:", meetingId);
+      console.log("   userId:", socket.user._id);
+      console.log("   userName:", socket.user.name);
 
-      console.log(meetingId, socket.user._id, socket.user.name);
+      let meeting;
+      try {
+        meeting = await meetingService.requestJoinMeeting(
+          meetingId,
+          socket.user._id,
+          socket.user.name
+        );
+      } catch (error) {
+        // If already requested, just get the meeting and continue
+        if (error.message === "Already Requested to Join Meeting") {
+          console.log("⚠️ Backend: User already in waiting room, re-notifying host");
+          meeting = await meetingService.getActiveMeeting(meetingId);
+        } else {
+          throw error;
+        }
+      }
+
+      const hostRoom = `${meetingId}-host`;
+      console.log("📡 Backend: Emitting to host room:", hostRoom);
+      console.log("   Host room sockets:", io.sockets.adapter.rooms.get(hostRoom));
 
       // Notify Host only
-      io.to(`${meetingId}-host`).emit("join-requested", {
+      io.to(hostRoom).emit("join-requested", {
         userId: socket.user._id,
         name: socket.user.name,
         requestedAt: Date.now(),
       });
 
+      console.log("✅ Backend: join-requested emitted to host");
       socket.emit("waiting");
     } catch (error) {
-      console.log("request-join error:", error.message);
+      console.log("❌ Backend: request-join error:", error.message);
       socket.emit("join-error", { message: error.message });
     }
   });

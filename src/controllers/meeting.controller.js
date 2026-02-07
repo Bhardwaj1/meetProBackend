@@ -67,14 +67,15 @@ const leaveMeeting = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Meeting Id is required");
   }
-  const result= await meetingService.leaveMeeting(meetingId,req.user._id);
+  const result = await meetingService.leaveMeeting(meetingId, req.user._id);
 
   if (result.ended) {
-    res.status(200).json({
-      success:true,
-      message:"Host left. Meeting ended"
-    })
-  };
+    return res.status(200).json({
+      success: true,
+      message: "Host left. Meeting ended"
+    });
+  }
+  
   res.status(200).json({
     success: true,
     message: "Meeting left successfully",
