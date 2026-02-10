@@ -14,6 +14,8 @@ const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/auth.routes");
 const meetingRoutes = require("./routes/meeting.routes");
 const meetingLogRoutes=require("./routes/meetingLog.routes");
+const meetingHistoryRoutes=require("./routes/meetingHistory.routes");
+
 const initSocket = require("./socket");
 
 const app = express();
@@ -40,6 +42,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/meeting", meetingRoutes);
 app.use("/api/meeting-log",meetingLogRoutes)
+app.use("/api/meeting-history",meetingHistoryRoutes)
 
 server.listen(PORT || 8080, () => {
   console.log(`🚀 App + Socket running on port ${PORT}`);

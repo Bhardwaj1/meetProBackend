@@ -1,6 +1,7 @@
 const Meeting = require("../models/Meeting");
 const { v4: uuidV4 } = require("uuid");
 const { logMeetingEvent } = require("./meetingLog.service");
+const MeetingHistory = require("../models/MeetingHistory");
 
 /* ================================
    INTERNAL HELPERS (PRIVATE)
@@ -33,6 +34,13 @@ const createMeeting = async (userId) => {
         role: "HOST",
       },
     ],
+  });
+
+  await MeetingHistory.create({
+    meetingId: meeting.meetingId,
+    user: userId,
+    role: "HOST",
+    joinedAt: Date.now(),
   });
 
   await logMeetingEvent({
@@ -100,6 +108,19 @@ const approveJoinMeeting = async (meetingId, hostId, targetUserId) => {
     role: "PARTICIPANT",
   });
 
+  try {
+    await MeetingHistory.create({
+      meetingId: meetingId,
+      user: targetUserId,
+      role: "PARTICIPANT",
+      joinedAt: new Date(),
+    });
+  } catch (error) {
+    if (error.code !== 11000) {
+      throw error;
+    }
+  }
+
   await meeting.save();
 
   await logMeetingEvent({
@@ -129,6 +150,17 @@ const joinMeeting = async (meetingId, userId) => {
 
     await meeting.save();
 
+    try {
+      await MeetingHistory.create({
+        meetingId,
+        user: userId,
+        role: "PARTICIPANT",
+        joinedAt: new Date(),
+      });
+    } catch (err) {
+      if (err.code !== 11000) throw err;
+    }
+
     await logMeetingEvent({
       meetingId,
       action: "USER_JOINED",
@@ -144,7 +176,7 @@ const joinMeeting = async (meetingId, userId) => {
 ================================ */
 const leaveMeeting = async (meetingId, userId) => {
   const meeting = await Meeting.findOne({ meetingId });
-  
+
   if (!meeting) {
     throw new Error("Meeting not found");
   }
@@ -178,6 +210,11 @@ const leaveMeeting = async (meetingId, userId) => {
   if (meeting.participants.length !== beforeCount) {
     await meeting.save();
 
+    await MeetingHistory.findOneAndUpdate(
+      { meetingId, user: userId },
+      { leftAt: new Date() },
+    );
+
     await logMeetingEvent({
       meetingId,
       action: "USER_LEFT",
@@ -201,6 +238,8 @@ const endMeeting = async (meetingId, userId) => {
   meeting.isActive = false;
   meeting.endAt = new Date();
   await meeting.save();
+
+  await MeetingHistory.updateMany({ meetingId }, { leftAt: new Date() });
 
   await logMeetingEvent({
     meetingId,
