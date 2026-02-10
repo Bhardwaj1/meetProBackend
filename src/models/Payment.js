@@ -1,7 +1,6 @@
-const { required } = require("joi");
 const mongoose = require("mongoose");
 
-const PaymentSchema = new mongoose.Schema(
+const paymentSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -35,3 +34,5 @@ const PaymentSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+module.exports = mongoose.model("Payment", paymentSchema);
