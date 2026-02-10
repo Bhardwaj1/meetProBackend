@@ -7,7 +7,6 @@ const { logMeetingEvent } = require("./meetingLog.service");
 ================================ */
 
 const getParticipant = (meeting, userId) => {
-  console.log(meeting);
   return meeting.participants.find(
     (p) => p.user.toString() === userId.toString(),
   );
@@ -52,7 +51,6 @@ const getActiveMeeting = async (meetingId) => {
   const meeting = await Meeting.findOne({ meetingId });
   if (!meeting) throw new Error("Meeting not found");
   if (!meeting.isActive) throw new Error("Meeting already ended");
-  console.log({meeting})
   return meeting;
 };
 
@@ -61,9 +59,6 @@ const getActiveMeeting = async (meetingId) => {
 ================================ */
 const requestJoinMeeting = async (meetingId, userId, name) => {
   const meeting = await getActiveMeeting(meetingId);
-
-  console.log("=== REQUEST JOIN DEBUG ===");
-  console.log("Before push - waitingRoom:", meeting.waitingRoom);
 
   if (getParticipant(meeting, userId)) {
     throw new Error("Already Joined Meeting");
@@ -74,10 +69,7 @@ const requestJoinMeeting = async (meetingId, userId, name) => {
   }
 
   meeting.waitingRoom.push({ userId, name });
-  console.log("After push - waitingRoom:", meeting.waitingRoom);
-
   await meeting.save();
-  console.log("After save - waitingRoom:", meeting.waitingRoom);
 
   return meeting;
 };
@@ -87,11 +79,6 @@ const requestJoinMeeting = async (meetingId, userId, name) => {
 const approveJoinMeeting = async (meetingId, hostId, targetUserId) => {
   const meeting = await getActiveMeeting(meetingId);
 
-  console.log("=== APPROVE JOIN DEBUG ===");
-  console.log("Before approval - waitingRoom:", meeting.waitingRoom);
-  console.log("Before approval - participants:", meeting.participants);
-  console.log("targetUserId:", targetUserId);
-
   if (!hasRole(meeting, hostId, ["HOST"])) {
     throw new Error("Only host can approve join request");
   }
@@ -99,8 +86,6 @@ const approveJoinMeeting = async (meetingId, hostId, targetUserId) => {
   const waitingUser = meeting.waitingRoom.find(
     (w) => w.userId.toString() === targetUserId.toString(),
   );
-
-  console.log("Found waitingUser:", waitingUser);
 
   if (!waitingUser) {
     throw new Error("User not in waiting room");
@@ -115,11 +100,7 @@ const approveJoinMeeting = async (meetingId, hostId, targetUserId) => {
     role: "PARTICIPANT",
   });
 
-  console.log("After approval - waitingRoom:", meeting.waitingRoom);
-  console.log("After approval - participants:", meeting.participants);
-
   await meeting.save();
-  console.log("After save - DONE");
 
   await logMeetingEvent({
     meetingId,
@@ -162,7 +143,16 @@ const joinMeeting = async (meetingId, userId) => {
    LEAVE MEETING
 ================================ */
 const leaveMeeting = async (meetingId, userId) => {
-  const meeting = await getActiveMeeting(meetingId);
+  const meeting = await Meeting.findOne({ meetingId });
+  
+  if (!meeting) {
+    throw new Error("Meeting not found");
+  }
+
+  // If meeting already ended, just return
+  if (!meeting.isActive) {
+    return { ended: true };
+  }
 
   // HOST leaves → meeting ends
   if (hasRole(meeting, userId, ["HOST"])) {
