@@ -1,6 +1,16 @@
 const meetingService = require("../services/meeting.serivce");
 
 const registerMeetingHandlers = (io, socket) => {
+  const getTargetSocketInMeeting = (targetUserId) => {
+    if (!socket.meetingId || !targetUserId) return null;
+
+    return [...io.sockets.sockets.values()].find((peerSocket) => {
+      const isTargetUser =
+        peerSocket.user?._id?.toString() === targetUserId.toString();
+      return isTargetUser && peerSocket.rooms.has(socket.meetingId);
+    });
+  };
+
   /* ===============================
    JOIN MEETING (AFTER APPROVAL)
 ================================ */
@@ -318,38 +328,47 @@ const registerMeetingHandlers = (io, socket) => {
 ================================ */
 
   // OFFER
-  socket.on("webrtc-offer", ({ offer, targetUserId }) => {
-    io.sockets.sockets.forEach((s) => {
-      if (s.user?._id.toString() === targetUserId.toString()) {
-        s.emit("webrtc-offer", {
-          offer,
-          from: socket.user._id,
-        });
-      }
+  socket.on("webrtc-offer", ({ offer, targetUserId, meetingId }) => {
+    if (!socket.meetingId || !offer || !targetUserId) return;
+    if (meetingId && socket.meetingId !== meetingId) return;
+
+    const targetSocket = getTargetSocketInMeeting(targetUserId);
+    if (!targetSocket) return;
+
+    targetSocket.emit("webrtc-offer", {
+      offer,
+      from: socket.user._id,
+      meetingId: socket.meetingId,
     });
   });
 
   // ANSWER
-  socket.on("webrtc-answer", ({ answer, targetUserId }) => {
-    io.sockets.sockets.forEach((s) => {
-      if (s.user?._id.toString() === targetUserId.toString()) {
-        s.emit("webrtc-answer", {
-          answer,
-          from: socket.user._id,
-        });
-      }
+  socket.on("webrtc-answer", ({ answer, targetUserId, meetingId }) => {
+    if (!socket.meetingId || !answer || !targetUserId) return;
+    if (meetingId && socket.meetingId !== meetingId) return;
+
+    const targetSocket = getTargetSocketInMeeting(targetUserId);
+    if (!targetSocket) return;
+
+    targetSocket.emit("webrtc-answer", {
+      answer,
+      from: socket.user._id,
+      meetingId: socket.meetingId,
     });
   });
 
   // ICE CANDIDATE
-  socket.on("webrtc-ice-candidate", ({ candidate, targetUserId }) => {
-    io.sockets.sockets.forEach((s) => {
-      if (s.user?._id.toString() === targetUserId.toString()) {
-        s.emit("webrtc-ice-candidate", {
-          candidate,
-          from: socket?.user?._id,
-        });
-      }
+  socket.on("webrtc-ice-candidate", ({ candidate, targetUserId, meetingId }) => {
+    if (!socket.meetingId || !candidate || !targetUserId) return;
+    if (meetingId && socket.meetingId !== meetingId) return;
+
+    const targetSocket = getTargetSocketInMeeting(targetUserId);
+    if (!targetSocket) return;
+
+    targetSocket.emit("webrtc-ice-candidate", {
+      candidate,
+      from: socket.user._id,
+      meetingId: socket.meetingId,
     });
   });
 };
