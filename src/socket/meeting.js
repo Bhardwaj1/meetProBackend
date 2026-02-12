@@ -1,4 +1,5 @@
 const meetingService = require("../services/meeting.serivce");
+const MeetingChat = require("../models/MeetingChat");
 
 const registerMeetingHandlers = (io, socket) => {
   const getTargetSocketInMeeting = (targetUserId) => {
@@ -14,8 +15,18 @@ const registerMeetingHandlers = (io, socket) => {
   /* ===============================
    JOIN MEETING (AFTER APPROVAL)
 ================================ */
-  socket.on("join-meeting", async ({ meetingId }) => {
+  socket.on("join-meeting", async (payload = {}) => {
     try {
+      const { meetingId } = payload;
+
+      if (!meetingId || typeof meetingId !== "string") {
+        socket.emit("meeting-error", {
+          message: "Meeting ID is required",
+          code: "INVALID_MEETING_ID",
+        });
+        return;
+      }
+
       console.log("🚪 Backend: join-meeting received");
       console.log("   meetingId:", meetingId);
       console.log("   userId:", socket.user._id);
@@ -40,6 +51,14 @@ const registerMeetingHandlers = (io, socket) => {
       }
 
       if (isHost) {
+        if (!isParticipant) {
+          meeting.participants.push({
+            user: socket.user._id,
+            role: "HOST",
+            isMuted: false,
+          });
+        }
+
         meeting.hostSocketId = socket.id;
         await meeting.save();
 
@@ -54,7 +73,25 @@ const registerMeetingHandlers = (io, socket) => {
 
       socket.join(meetingId);
       socket.meetingId = meetingId;
+      socket.meetingObjectId = meeting._id;
       console.log("✅ Backend: User joined meeting room:", meetingId);
+
+      const chats = await MeetingChat.find({ meeting: meeting._id })
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .populate("sender", "name");
+
+      const formattedChats = chats.map((msg) => ({
+        text: msg.text,
+        sender: msg.sender?.name || "Unknown",
+        userId: msg.sender?._id,
+        time: new Date(msg.createdAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      }));
+
+      socket.emit("chat-history", formattedChats);
 
       const snapshot = await meetingService.getMeetingSnapshot(meetingId);
       socket.emit("meeting-state", snapshot);
@@ -146,17 +183,26 @@ const registerMeetingHandlers = (io, socket) => {
   /* ===============================
    CHAT MESSAGE
 ================================ */
-  socket.on("chat-message", ({ message }) => {
-    if (!socket.meetingId || !message) {
+  socket.on("chat-message", async ({ message }) => {
+    if (!socket.meetingId || !socket.meetingObjectId || !message) {
       return;
     }
 
-    io.to(socket.meetingId).emit("chat-message", {
-      userId: socket.user._id,
-      name: socket.user.name,
-      message,
-      timestamp: Date.now(),
+    const saveMessage = await MeetingChat.create({
+      meeting: socket.meetingObjectId,
+      sender: socket.user._id,
+      text: message,
     });
+
+    const payload = {
+      _id: saveMessage?._id,
+      text: saveMessage?.text,
+      sender: socket?.user?.name,
+      userId: socket?.user?._id,
+      time: new Date(saveMessage?.createdAt).toLocaleTimeString(),
+    };
+
+    io.to(socket.meetingId).emit("chat-message", payload);
   });
 
   /* ===============================
@@ -267,6 +313,7 @@ const registerMeetingHandlers = (io, socket) => {
         if (s.user?._id.toString() === targetUserId.toString()) {
           s.leave(socket.meetingId);
           s.meetingId = null;
+          s.meetingObjectId = null;
         }
       });
     } catch (err) {
@@ -289,6 +336,7 @@ const registerMeetingHandlers = (io, socket) => {
       roomSockets.forEach((s) => {
         s.leave(socket.meetingId);
         s.meetingId = null;
+        s.meetingObjectId = null;
       });
     } catch (err) {
       console.log("host-end-meeting error:", err.message);
@@ -313,6 +361,7 @@ const registerMeetingHandlers = (io, socket) => {
         sockets.forEach((s) => {
           s.leave(socket.meetingId);
           s.meetingId = null;
+          s.meetingObjectId = null;
         });
         return;
       }
@@ -324,6 +373,7 @@ const registerMeetingHandlers = (io, socket) => {
       });
 
       socket.meetingId = null;
+      socket.meetingObjectId = null;
     } catch (err) {
       console.log("leave-meeting error:", err.message);
     }
