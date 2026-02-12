@@ -27,7 +27,7 @@ const registerMeetingHandlers = (io, socket) => {
       console.log("   isHost:", isHost);
 
       const isParticipant = meeting.participants.some(
-        (p) => p.user.toString() === socket.user._id.toString()
+        (p) => p.user.toString() === socket.user._id.toString(),
       );
       console.log("   isParticipant:", isParticipant);
 
@@ -37,7 +37,7 @@ const registerMeetingHandlers = (io, socket) => {
           reason: "WAITING APPROVAL",
         });
         return;
-      };
+      }
 
       if (isHost) {
         meeting.hostSocketId = socket.id;
@@ -46,7 +46,10 @@ const registerMeetingHandlers = (io, socket) => {
         const hostRoom = `${meetingId}-host`;
         socket.join(hostRoom);
         console.log("✅ Backend: Host joined room:", hostRoom);
-        console.log("   Host room sockets:", io.sockets.adapter.rooms.get(hostRoom));
+        console.log(
+          "   Host room sockets:",
+          io.sockets.adapter.rooms.get(hostRoom),
+        );
       }
 
       socket.join(meetingId);
@@ -73,7 +76,7 @@ const registerMeetingHandlers = (io, socket) => {
       const waitingUser = await meetingService.approveJoinMeeting(
         meetingId,
         socket.user._id,
-        userId
+        userId,
       );
       // Notify user approved
       io.to(userId.toString()).emit("join-approved", { meetingId });
@@ -104,12 +107,14 @@ const registerMeetingHandlers = (io, socket) => {
         meeting = await meetingService.requestJoinMeeting(
           meetingId,
           socket.user._id,
-          socket.user.name
+          socket.user.name,
         );
       } catch (error) {
         // If already requested, just get the meeting and continue
         if (error.message === "Already Requested to Join Meeting") {
-          console.log("⚠️ Backend: User already in waiting room, re-notifying host");
+          console.log(
+            "⚠️ Backend: User already in waiting room, re-notifying host",
+          );
           meeting = await meetingService.getActiveMeeting(meetingId);
         } else {
           throw error;
@@ -118,7 +123,10 @@ const registerMeetingHandlers = (io, socket) => {
 
       const hostRoom = `${meetingId}-host`;
       console.log("📡 Backend: Emitting to host room:", hostRoom);
-      console.log("   Host room sockets:", io.sockets.adapter.rooms.get(hostRoom));
+      console.log(
+        "   Host room sockets:",
+        io.sockets.adapter.rooms.get(hostRoom),
+      );
 
       // Notify Host only
       io.to(hostRoom).emit("join-requested", {
@@ -136,6 +144,22 @@ const registerMeetingHandlers = (io, socket) => {
   });
 
   /* ===============================
+   CHAT MESSAGE
+================================ */
+  socket.on("chat-message", ({ message }) => {
+    if (!socket.meetingId || !message) {
+      return;
+    }
+
+    io.to(socket.meetingId).emit("chat-message", {
+      userId: socket.user._id,
+      name: socket.user.name,
+      message,
+      timestamp: Date.now(),
+    });
+  });
+
+  /* ===============================
      MUTE SELF
   ================================ */
   socket.on("mute-self", async () => {
@@ -145,7 +169,7 @@ const registerMeetingHandlers = (io, socket) => {
       await meetingService.setMuteState(
         socket.meetingId,
         socket.user._id,
-        true
+        true,
       );
 
       io.to(socket.meetingId).emit("user-muted", {
@@ -166,7 +190,7 @@ const registerMeetingHandlers = (io, socket) => {
       await meetingService.setMuteState(
         socket.meetingId,
         socket.user._id,
-        false
+        false,
       );
 
       io.to(socket.meetingId).emit("user-unmuted", {
@@ -188,7 +212,7 @@ const registerMeetingHandlers = (io, socket) => {
         socket.meetingId,
         socket.user._id,
         targetUserId,
-        true
+        true,
       );
 
       io.to(socket.meetingId).emit("user-muted", {
@@ -210,7 +234,7 @@ const registerMeetingHandlers = (io, socket) => {
         socket.meetingId,
         socket.user._id,
         targetUserId,
-        false
+        false,
       );
 
       io.to(socket.meetingId).emit("user-unmuted", {
@@ -231,7 +255,7 @@ const registerMeetingHandlers = (io, socket) => {
       await meetingService.kickUser(
         socket.meetingId,
         socket.user._id,
-        targetUserId
+        targetUserId,
       );
 
       io.to(socket.meetingId).emit("user-kicked", {
@@ -280,7 +304,7 @@ const registerMeetingHandlers = (io, socket) => {
 
       const result = await meetingService.leaveMeeting(
         socket.meetingId,
-        socket.user._id
+        socket.user._id,
       );
 
       if (result.ended) {
@@ -358,19 +382,22 @@ const registerMeetingHandlers = (io, socket) => {
   });
 
   // ICE CANDIDATE
-  socket.on("webrtc-ice-candidate", ({ candidate, targetUserId, meetingId }) => {
-    if (!socket.meetingId || !candidate || !targetUserId) return;
-    if (meetingId && socket.meetingId !== meetingId) return;
+  socket.on(
+    "webrtc-ice-candidate",
+    ({ candidate, targetUserId, meetingId }) => {
+      if (!socket.meetingId || !candidate || !targetUserId) return;
+      if (meetingId && socket.meetingId !== meetingId) return;
 
-    const targetSocket = getTargetSocketInMeeting(targetUserId);
-    if (!targetSocket) return;
+      const targetSocket = getTargetSocketInMeeting(targetUserId);
+      if (!targetSocket) return;
 
-    targetSocket.emit("webrtc-ice-candidate", {
-      candidate,
-      from: socket.user._id,
-      meetingId: socket.meetingId,
-    });
-  });
+      targetSocket.emit("webrtc-ice-candidate", {
+        candidate,
+        from: socket.user._id,
+        meetingId: socket.meetingId,
+      });
+    },
+  );
 };
 
 module.exports = registerMeetingHandlers;
