@@ -1,7 +1,7 @@
 const Meeting = require("../models/Meeting");
+const MeetingHistory = require("../models/MeetingHistory");
 const { v4: uuidV4 } = require("uuid");
 const { logMeetingEvent } = require("./meetingLog.service");
-const MeetingHistory = require("../models/MeetingHistory");
 
 /* ================================
    INTERNAL HELPERS (PRIVATE)
@@ -191,6 +191,9 @@ const leaveMeeting = async (meetingId, userId) => {
     meeting.isActive = false;
     meeting.endAt = new Date();
     await meeting.save();
+
+    // Update all participants' leftAt including host
+    await MeetingHistory.updateMany({ meetingId }, { leftAt: new Date() });
 
     await logMeetingEvent({
       meetingId,

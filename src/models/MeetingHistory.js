@@ -28,6 +28,15 @@ const meetingHistorySchema = new mongoose.Schema({
   },
 });
 
+// Virtual field for status
+meetingHistorySchema.virtual("status").get(function () {
+  return this.leftAt ? "Completed" : "Ongoing";
+});
+
+// Ensure virtuals are included in JSON
+meetingHistorySchema.set("toJSON", { virtuals: true });
+meetingHistorySchema.set("toObject", { virtuals: true });
+
 meetingHistorySchema.index({ meetingId: 1, user: 1 }, { unique: true });
 
 module.exports = mongoose.model("MeetingHistory", meetingHistorySchema);

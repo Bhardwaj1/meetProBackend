@@ -3,7 +3,20 @@ const Exceljs = require("exceljs");
 const MeetingHistory = require("../models/MeetingHistory");
 const getMeetingsHistory = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const { page = 1, limit = 20 } = req.query;
+  const { page = 1, limit = 20, search = "" } = req.query;
+
+  console.log(req.query);
+
+  const filter = { user: userId };
+
+  console.log(search,"print hoja")
+
+  if (search) {
+    filter.$or = [
+      { meetingId: { $regex: search, $options: "i" } },
+      { actor: { $regex: search, $options: "i" } },
+    ];
+  }
 
   const skip = (page - 1) * limit;
 
