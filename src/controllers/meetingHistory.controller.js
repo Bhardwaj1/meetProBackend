@@ -4,31 +4,27 @@ const MeetingHistory = require("../models/MeetingHistory");
 const getMeetingsHistory = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const { page = 1, limit = 20, search = "" } = req.query;
-
-  console.log(req.query);
-
   const filter = { user: userId };
-
-  console.log(search,"print hoja")
-
   if (search) {
     filter.$or = [
       { meetingId: { $regex: search, $options: "i" } },
       { actor: { $regex: search, $options: "i" } },
     ];
-  }
-
+  };
   const skip = (page - 1) * limit;
 
   const [records, total] = await Promise.all([
-    MeetingHistory.find({ user: userId })
+    MeetingHistory.find(filter)
       .sort({ joinedAt: -1 })
       .skip(skip)
       .limit(Number(limit))
       .populate("user", "name email")
       .lean(),
-    MeetingHistory.countDocuments({ user: userId }),
+    MeetingHistory.countDocuments(filter),
   ]);
+
+
+  console.log({records})
 
   res.json({
     success: true,
