@@ -19,6 +19,10 @@ const hasRole = (meeting, userId, roles = []) => {
   return roles.includes(participant.role);
 };
 
+const scheduleMeeting=async()=>{
+
+};
+
 /* ================================
    CREATE MEETING
 ================================ */
