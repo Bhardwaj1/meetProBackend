@@ -6,6 +6,7 @@ const {
   endMeeting,
   getMeetingDetails,
   leaveMeeting,
+  scheduleMeeting,
 } = require("../controllers/meeting.controller");
 
 const router = express.Router();
@@ -23,6 +24,8 @@ const router = express.Router();
  *         description: Meeting created successfully
  */
 router.post("/create-meeting", protect, createMeeting);
+
+router.post("/schedule-meeting", protect, scheduleMeeting);
 
 /**
  * @swagger

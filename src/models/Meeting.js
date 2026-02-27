@@ -3,14 +3,19 @@ const mongoose = require("mongoose");
 const meetingSchema = new mongoose.Schema(
   {
     meetingId: { type: String, required: true, unique: true, index: true },
+    title: {
+      type: String,
+      trim: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+    },
     host: {
       type: mongoose.Schema.ObjectId,
       ref: "User",
       required: true,
       index: true,
-    },
-    hostSocketId: {
-      type: String,
     },
     participants: [
       {
@@ -34,6 +39,7 @@ const meetingSchema = new mongoose.Schema(
         },
       },
     ],
+    invitedUsers: [{ type: mongoose.Schema.ObjectId, ref: "User" }],
     waitingRoom: [
       {
         userId: {
@@ -51,7 +57,19 @@ const meetingSchema = new mongoose.Schema(
         },
       },
     ],
-
+    scheduledAt: {
+      type: Date,
+      index: true,
+    },
+    duration: {
+      type: Number,
+    },
+    status: {
+      type: String,
+      enum: ["SCHEDULED", "ACTIVE", "ENDED"],
+      default: "ACTIVE",
+      index: true,
+    },
     endAt: {
       type: Date,
     },

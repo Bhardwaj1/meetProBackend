@@ -1,13 +1,13 @@
 const { v4: uuidV4 } = require("uuid");
 const Meeting = require("../models/Meeting");
 const asyncHandler = require("express-async-handler");
-const meetingService= require("../services/meeting.serivce");
+const meetingService = require("../services/meeting.serivce");
 
 /* ================================
    CREATE MEETING
 ================================ */
 const createMeeting = asyncHandler(async (req, res) => {
-  const meeting= await meetingService.createMeeting(req.user._id);
+  const meeting = await meetingService.createMeeting(req.user._id);
 
   res.status(201).json({
     success: true,
@@ -17,12 +17,26 @@ const createMeeting = asyncHandler(async (req, res) => {
   });
 });
 
+const scheduleMeeting = asyncHandler(async (req, res) => {
+  const meeting = await meetingService.scheduleMeeting({
+    userId: req?.user._id,
+    title: req?.title,
+    description: req?.description,
+    scheduledAt: req?.scheduledAt,
+    duration: req?.duration,
+    invitedUsers: req?.invitedUsers,
+  });
+});
 /* ================================
    JOIN MEETING
 ================================ */
 const joinMeeting = asyncHandler(async (req, res) => {
   const { meetingId } = req.body;
-  await meetingService.requestJoinMeeting(meetingId,req.user._id,req.user.name);
+  await meetingService.requestJoinMeeting(
+    meetingId,
+    req.user._id,
+    req.user.name,
+  );
   res.status(200).json({
     success: true,
     message: "Join request sent. Waiting for host approval",
@@ -72,10 +86,10 @@ const leaveMeeting = asyncHandler(async (req, res) => {
   if (result.ended) {
     return res.status(200).json({
       success: true,
-      message: "Host left. Meeting ended"
+      message: "Host left. Meeting ended",
     });
   }
-  
+
   res.status(200).json({
     success: true,
     message: "Meeting left successfully",
@@ -87,7 +101,7 @@ const leaveMeeting = asyncHandler(async (req, res) => {
 ================================ */
 const endMeeting = asyncHandler(async (req, res) => {
   const { meetingId } = req.body;
- await meetingService.endMeeting(meetingId,req.user._id);
+  await meetingService.endMeeting(meetingId, req.user._id);
   res.status(200).json({
     success: true,
     message: "Meeting ended successfully",
@@ -96,6 +110,7 @@ const endMeeting = asyncHandler(async (req, res) => {
 
 module.exports = {
   createMeeting,
+  scheduleMeeting,
   joinMeeting,
   getMeetingDetails,
   leaveMeeting,

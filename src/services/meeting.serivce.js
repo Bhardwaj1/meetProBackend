@@ -19,8 +19,42 @@ const hasRole = (meeting, userId, roles = []) => {
   return roles.includes(participant.role);
 };
 
-const scheduleMeeting=async()=>{
+const scheduleMeeting = async ({
+  userId,
+  title,
+  description,
+  scheduledAt,
+  duration,
+  invitedUsers = [],
+}) => {
+  if (!scheduledAt) {
+    throw new Error("Scheduled date and time is required");
+  }
 
+  if (new Date(scheduledAt) < new Date()) {
+    throw new Error("Scheduled date and time must be in future");
+  }
+
+  const meeting = await Meeting.create({
+    meetingId: uuidV4().slice(0, 8),
+    host: userId,
+    title,
+    description,
+    scheduledAt,
+    duration,
+    invitedUsers,
+    status: "SCHEDULED",
+    isActive: false,
+    participants: [],
+  });
+
+  await logMeetingEvent({
+    meetingId: meeting.meetingId,
+    action: "MEETING_SCHEDULED",
+    actor: userId,
+  });
+
+  return meeting;
 };
 
 /* ================================
@@ -62,7 +96,12 @@ const createMeeting = async (userId) => {
 const getActiveMeeting = async (meetingId) => {
   const meeting = await Meeting.findOne({ meetingId });
   if (!meeting) throw new Error("Meeting not found");
-  if (!meeting.isActive) throw new Error("Meeting already ended");
+  if (meeting.status === "SCHEDULED") {
+    throw new Error("Meeting has not started yet");
+  };
+  if (meeting.status === "ENDED") {
+    throw new Error("Meeting already ended");
+  };
   return meeting;
 };
 
@@ -395,6 +434,7 @@ const getMeetingSnapshot = async (meetingId) => {
 ================================ */
 module.exports = {
   createMeeting,
+  scheduleMeeting,
   getActiveMeeting,
   joinMeeting,
   leaveMeeting,
