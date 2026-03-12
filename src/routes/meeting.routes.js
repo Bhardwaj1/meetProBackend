@@ -7,6 +7,7 @@ const {
   getMeetingDetails,
   leaveMeeting,
   scheduleMeeting,
+  startMeeting,
 } = require("../controllers/meeting.controller");
 
 const router = express.Router();
@@ -47,6 +48,7 @@ router.post("/schedule-meeting", protect, scheduleMeeting);
  *         description: Successfully joined meeting
  */
 router.post("/join-meeting", protect, joinMeeting);
+router.post("/start-meeting",protect,startMeeting);
 
 router.get("/:meetingId", protect, getMeetingDetails);
 router.post("/leave-meeting", protect, leaveMeeting);

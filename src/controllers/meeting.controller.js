@@ -17,16 +17,48 @@ const createMeeting = asyncHandler(async (req, res) => {
   });
 });
 
+/* ================================
+   SCHEDULE MEETING
+================================ */
+
 const scheduleMeeting = asyncHandler(async (req, res) => {
+  const { title, description, scheduledAt, duration, invitedUsers } = req.body;
   const meeting = await meetingService.scheduleMeeting({
     userId: req?.user._id,
-    title: req?.title,
-    description: req?.description,
-    scheduledAt: req?.scheduledAt,
-    duration: req?.duration,
-    invitedUsers: req?.invitedUsers,
+    title,
+    description,
+    scheduledAt,
+    duration,
+    invitedUsers,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "Meeting Scheduled SuccessFully",
+    meetingId: meeting.meetingId,
+    scheduledAt: meeting.scheduledAt,
   });
 });
+
+/* ================================
+   START MEETING
+================================ */
+
+const startMeeting = asyncHandler(async (req, res) => {
+  const { meetingId } = req.body;
+
+  const meeting = await meetingService.startScheduledMeeting(
+    meetingId,
+    req.user.Id,
+  );
+
+  res.status(200).json({
+    success:true,
+    message:"Meeting Started",
+    meetingId:meeting.meetingId
+  })
+});
+
 /* ================================
    JOIN MEETING
 ================================ */
@@ -111,6 +143,7 @@ const endMeeting = asyncHandler(async (req, res) => {
 module.exports = {
   createMeeting,
   scheduleMeeting,
+  startMeeting,
   joinMeeting,
   getMeetingDetails,
   leaveMeeting,

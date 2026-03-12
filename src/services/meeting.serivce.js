@@ -2,6 +2,7 @@ const Meeting = require("../models/Meeting");
 const MeetingHistory = require("../models/MeetingHistory");
 const { v4: uuidV4 } = require("uuid");
 const { logMeetingEvent } = require("./meetingLog.service");
+const MeetingLog = require("../models/MeetingLog");
 
 /* ================================
    INTERNAL HELPERS (PRIVATE)
@@ -33,7 +34,11 @@ const scheduleMeeting = async ({
 
   if (new Date(scheduledAt) < new Date()) {
     throw new Error("Scheduled date and time must be in future");
-  }
+  };
+  const formattedInvites = invitedUsers.map((email) => ({
+  email: email.trim().toLowerCase(),
+}));
+
 
   const meeting = await Meeting.create({
     meetingId: uuidV4().slice(0, 8),
@@ -42,7 +47,7 @@ const scheduleMeeting = async ({
     description,
     scheduledAt,
     duration,
-    invitedUsers,
+    invitedUsers:formattedInvites,
     status: "SCHEDULED",
     isActive: false,
     participants: [],
@@ -104,6 +109,45 @@ const getActiveMeeting = async (meetingId) => {
   };
   return meeting;
 };
+
+/* ================================
+   START SCHEDULED MEETING
+================================ */
+
+const startScheduledMeeting=async(meetingId,userId)=>{
+  const meeting=await Meeting.findOne({meetingId});
+
+  if (!meeting) {
+    throw new Error("Meeting not found");
+  };
+
+  if (meeting.host.toString() !==userId.toString()) {
+    throw new Error("Only host can start meeting");
+  };
+
+  if (meeting.status !=="SCHEDULED") {
+      throw new Error("Meeting is not Scheduled");
+  };
+
+  meeting.status="ACTIVE";
+  meeting.isActive=true;
+
+  meeting.participants.push({
+    user:userId,
+    role:"HOST",
+    isMuted:false,
+  });
+
+  await meeting.save();
+
+  await logMeetingEvent({
+    meetingId,
+    action:"MEETING_STARTED",
+    actor:userId
+  });
+
+  return meeting;
+}
 
 /* ================================
    REQUEST JOIN MEETING
@@ -436,6 +480,7 @@ module.exports = {
   createMeeting,
   scheduleMeeting,
   getActiveMeeting,
+  startScheduledMeeting,
   joinMeeting,
   leaveMeeting,
   endMeeting,

@@ -39,7 +39,30 @@ const meetingSchema = new mongoose.Schema(
         },
       },
     ],
-    invitedUsers: [{ type: mongoose.Schema.ObjectId, ref: "User" }],
+    invitedUsers: [
+      {
+        email: {
+          type: String,
+          required: true,
+          lowercase: true,
+          trim: true,
+        },
+        user:{
+          type:mongoose.Schema.ObjectId,
+          ref:"User",
+          default:null,
+        },
+        invitedAt:{
+          type:Date,
+          default:Date.now(),
+        },
+        status:{
+          type:String,
+          enum:["INVITED","REGISTERED","JOINED"],
+          default:"INVITED"
+        }
+      },
+    ],
     waitingRoom: [
       {
         userId: {
